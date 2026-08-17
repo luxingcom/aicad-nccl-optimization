@@ -1,0 +1,58 @@
+diff --git a/src/transport/net.cc b/src/transport/net.cc
+index 03bb35d..5ce30e2 100644
+--- a/src/transport/net.cc
++++ b/src/transport/net.cc
+@@ -5,6 +5,11 @@
+  * See LICENSE.txt for more license information
+  *************************************************************************/
+ 
++/* ============================================================
++ * AICAD custom patch v4 (this file): hardcoded per-peer dual-dev map (ADR-015).
++ *   - ncclRingDevOverride() in sendSetup/recvSetup: even chan->devA, odd chan->devB.
++ *   - Patch file: patches/v4-netdev-hardcode.patch
++ * ============================================================ */
+ #include "comm.h"
+ #include "net.h"
+ #include "graph.h"
+@@ -294,6 +299,25 @@ static inline int getHandleForAddressRangeFlags(ncclTopoGdrMode useGdr) {
+ 
+ /* Determine if we will use this transport for this peer and return connect
+  * information for this peer */
++/* RING-ONLY PATCH v4 (ADR-015): hardcoded per-peer dual-dev map for switchless ring.
++ * Ring: 0(01)-1(02)-2(04)-3(03)-0. devs = NCCL_IB_HCA order 0..3.
++ * even channel -> pair[0], odd channel -> pair[1] (matches production v3 rotation).
++ * Non-ring-adjacent pairs use {0,0} sentinel -> leave NCCL default. */
++static void ncclRingDevOverride(int myRank, int peerRank, int channelId, int* dev) {
++  static const int map[4][4][2] = {
++    {{0,0},{1,3},{0,0},{0,2}},
++    {{1,3},{0,0},{0,2},{0,0}},
++    {{0,0},{0,2},{0,0},{1,3}},
++    {{0,2},{0,0},{1,3},{0,0}},
++  };
++  if (myRank < 0 || myRank > 3 || peerRank < 0 || peerRank > 3) return;
++  const int* pair = map[myRank][peerRank];
++  if (pair[0] == 0 && pair[1] == 0) return;  /* non-adjacent or self */
++  int want = (channelId % 2 == 0) ? pair[0] : pair[1];
++  INFO(NCCL_INIT, "RING-ONLY v4 rank %d->%d chan %d dev %d (was %d)", myRank, peerRank, channelId, want, *dev);
++  *dev = want;
++}
++
+ static ncclResult_t sendSetup(struct ncclComm* comm, struct ncclTopoGraph* graph, struct ncclPeerInfo* myInfo,
+                               struct ncclPeerInfo* peerInfo, struct ncclConnect* connectInfo,
+                               struct ncclConnector* send, int channelId, int connIndex) {
+@@ -308,6 +332,7 @@ static ncclResult_t sendSetup(struct ncclComm* comm, struct ncclTopoGraph* graph
+   int proxyRank;
+   int64_t netId;
+   NCCLCHECK(ncclTopoGetNetDev(comm, myInfo->rank, graph, channelId, peerInfo->rank, &netId, &req.netDev, &proxyRank));
++  ncclRingDevOverride(comm->rank, peerInfo->rank, channelId, &req.netDev);
+   NCCLCHECK(ncclTopoCheckGdr(comm->topo, myInfo->rank, netId, 1, &req.useGdr));
+   send->conn.flags |= req.useGdr ? NCCL_DIRECT_NIC : 0;
+   if (!req.useGdr && connIndex == 0) comm->useGdr = 0;
+@@ -357,6 +382,7 @@ static ncclResult_t recvSetup(struct ncclComm* comm, struct ncclTopoGraph* graph
+   int64_t netId;
+   NCCLCHECK(ncclTopoGetNetDev(comm, myInfo->rank, graph, channelId, /*peerRank=*/myInfo->rank, &netId, &req.netDev,
+                               &proxyRank));
++  ncclRingDevOverride(comm->rank, peerInfo->rank, channelId, &req.netDev);
+   NCCLCHECK(ncclTopoCheckGdr(comm->topo, myInfo->rank, netId, 0, &req.useGdr));
+   recv->conn.flags |= req.useGdr ? NCCL_DIRECT_NIC : 0;
+   if (!req.useGdr && connIndex == 0) comm->useGdr = 0;

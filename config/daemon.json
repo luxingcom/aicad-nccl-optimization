@@ -1,0 +1,22 @@
+{
+  "registry-mirrors": [
+    "https://docker.m.daocloud.io",
+    "https://dockerproxy.net",
+    "https://docker.1panel.live"
+  ],
+  "insecure-registries": [
+    "<LAN-IP>:5000",
+    "<LAN-IP>:5000"
+  ],
+  "runtimes": {
+    "nvidia": {
+      "path": "nvidia-container-runtime",
+      "args": []
+    }
+  },
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "100m",
+    "max-file": "5"
+  }
+}

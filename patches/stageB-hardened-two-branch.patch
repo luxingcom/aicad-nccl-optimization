@@ -1,0 +1,91 @@
+diff --git a/src/enqueue.cc b/src/enqueue.cc
+index 18f4c28..fecfbea 100644
+--- a/src/enqueue.cc
++++ b/src/enqueue.cc
+@@ -8,7 +8,10 @@
+ /* ============================================================
+  * AICAD custom patch StageB (this file): per-size LL/Simple two-band tuner (ADR-014/015).
+  *   - ncclGetAlgoInfo: allreduce <=40KB -> LL, >40KB -> Simple (NCCL_TUNER_THRESHOLD).
+- *   - Patch file: patches/stageB-tuner-two-band.patch
++ *   - StageB hardened (stageB-hardened-two-branch): override extracted into
++ *     ncclPersizeTunerOverride() and applied in BOTH tuner branches (SPCX tuner present
++ *     or not), removing the implicit dependency on NCCL_NET_PLUGIN=none.
++ *   - Patch file: patches/stageB-hardened-two-branch.patch
+  * ============================================================ */
+ #include "enqueue.h"
+ #include "argcheck.h"
+@@ -2121,6 +2124,36 @@ static ncclResult_t topoGetAlgoInfo(struct ncclComm* comm, struct ncclTaskColl*
+   return ncclSuccess;
+ }
+ 
++// === PerSize LL/Simple 双带覆盖 (Stage B hardened, 2026-08-16) ===
++// 目标: decode 小 allreduce(<=40KB) 走 LL, prefill 大 allreduce(>40KB) 走 Simple
++// 依据: nccl-proto-threshold-scan / nccl-tuner-implementation (ADR-014)
++// 加固 (ADR-014/015, stageB-hardened-two-branch): 将覆盖逻辑从 else 分支提升为 if/else 双分支生效,
++//   消除对 NCCL_NET_PLUGIN=none 的隐式依赖。即使 SPCX tuner (comm->tuner!=NULL) 存在,
++//   getCollInfo 返回后仍强制按阈值改写 cost table, 由随后的 topoGetAlgoInfo 选出 LL/Simple。
++//   仅干预 allreduce; 其余 collective 交回 NCCL 默认; 不碰 nChannels; 跳过 IGNORE(-1.0) 组合。
++static void ncclPersizeTunerOverride(struct ncclComm* comm, struct ncclTaskColl* info, size_t nBytes,
++                                     float** collCostTable) {
++  if (info->func != ncclFuncAllReduce) return;
++  float (*table)[NCCL_NUM_PROTOCOLS] = (float (*)[NCCL_NUM_PROTOCOLS])collCostTable;
++  size_t th = 40960u;
++  const char* tenv = ncclGetEnv("NCCL_TUNER_THRESHOLD");
++  if (tenv != NULL && tenv[0] != 0) {
++    long t = strtol(tenv, NULL, 10);
++    if (t > 0) th = (size_t)t;
++  }
++  int wantProto = (nBytes <= th) ? NCCL_PROTO_LL : NCCL_PROTO_SIMPLE;
++  for (int a = 0; a < NCCL_NUM_ALGORITHMS; a++) {
++    for (int pr = 0; pr < NCCL_NUM_PROTOCOLS; pr++) {
++      if (table[a][pr] == -1.0f) continue;  // IGNORE 防御
++      table[a][pr] = (pr == wantProto) ? 0.0f : 1e18f;
++    }
++  }
++  if (ncclGetEnv("NCCL_TUNER_DEBUG") != NULL) {
++    INFO(NCCL_TUNING, "PerSizeTuner: allreduce nBytes=%zu -> %s",
++         nBytes, wantProto == NCCL_PROTO_LL ? "LL" : "Simple");
++  }
++}
++
+ // Use the default topo-based tuner if tuner plugin is not successful.
+ // Call the plugin first. Let it set algo+proto, and/or nChannels.
+ // Then, topoGetAlgoInfo will set algo/proto if not set, then nChannels and nThreads based on algo/proto.
+@@ -2151,31 +2184,18 @@ ncclResult_t ncclGetAlgoInfo(struct ncclComm* comm, struct ncclTaskColl* info, i
+               (ncclCudaGraphValid(comm->planner.capturingGraph) && ncclParamGraphRegister());
+     NCCLCHECK(comm->tuner->getCollInfo(comm->tunerContext, info->func, nBytes, numPipeOps, (float**)collCostTable,
+                                        NCCL_NUM_ALGORITHMS, NCCL_NUM_PROTOCOLS, regBuff, &nMaxChannels));
++    // === StageB hardened: SPCX tuner 存在时也强制 per-size 覆盖 (ADR-014/015) ===
++    // SPCX getCollInfo 已写入 collCostTable; 此处强制按 40KB 阈值改写, 再交由 topoGetAlgoInfo 选 LL/Simple。
++    // 消除对 NCCL_NET_PLUGIN=none 的隐式依赖 (若将来去掉 none / 加载 SPCX tuner, 本覆盖仍生效)。
++    ncclPersizeTunerOverride(comm, info, nBytes, (float**)collCostTable);
+     NCCLCHECK(topoGetAlgoInfo(comm, info, nBytes, (float**)collCostTable, simInfo));
+   } else {
+     // === PerSize LL/Simple 双带覆盖 (Stage B, 2026-08-16) ===
+     // 目标: decode 小 allreduce(<=40KB) 走 LL, prefill 大 allreduce(>40KB) 走 Simple
+     // 依据: nccl-proto-threshold-scan / nccl-tuner-implementation (ADR-014)
++    // 加固: 逻辑已抽为 ncclPersizeTunerOverride(), 与 if 分支共用 (stageB-hardened-two-branch)
+     // 仅干预 allreduce; 其余 collective 交回 NCCL 默认; 不碰 nChannels
+-    if (info->func == ncclFuncAllReduce) {
+-      size_t th = 40960u;
+-      const char* tenv = ncclGetEnv("NCCL_TUNER_THRESHOLD");
+-      if (tenv != NULL && tenv[0] != 0) {
+-        long t = strtol(tenv, NULL, 10);
+-        if (t > 0) th = (size_t)t;
+-      }
+-      int wantProto = (nBytes <= th) ? NCCL_PROTO_LL : NCCL_PROTO_SIMPLE;
+-      for (int a = 0; a < NCCL_NUM_ALGORITHMS; a++) {
+-        for (int pr = 0; pr < NCCL_NUM_PROTOCOLS; pr++) {
+-          if (collCostTable[a][pr] == -1.0f) continue;  // IGNORE 防御
+-          collCostTable[a][pr] = (pr == wantProto) ? 0.0f : 1e18f;
+-        }
+-      }
+-      if (ncclGetEnv("NCCL_TUNER_DEBUG") != NULL) {
+-        INFO(NCCL_TUNING, "PerSizeTuner: allreduce nBytes=%zu -> %s",
+-             nBytes, wantProto == NCCL_PROTO_LL ? "LL" : "Simple");
+-      }
+-    }
++    ncclPersizeTunerOverride(comm, info, nBytes, (float**)collCostTable);
+     NCCLCHECK(topoGetAlgoInfo(comm, info, nBytes, (float**)collCostTable, simInfo));
+     // NCCL_CTA_POLICY_EFFICIENCY requires user (non-symmetric) buffer registration (currently unsupported with MNNVL)
+     if ((comm->config.CTAPolicy & NCCL_CTA_POLICY_EFFICIENCY) && ncclGetEnv("NCCL_ALGO") == NULL &&

@@ -1,0 +1,46 @@
+diff --git a/src/enqueue.cc b/src/enqueue.cc
+index 9f59b21..18f4c28 100644
+--- a/src/enqueue.cc
++++ b/src/enqueue.cc
+@@ -5,6 +5,11 @@
+  * See LICENSE.txt for more license information
+  *************************************************************************/
+ 
++/* ============================================================
++ * AICAD custom patch StageB (this file): per-size LL/Simple two-band tuner (ADR-014/015).
++ *   - ncclGetAlgoInfo: allreduce <=40KB -> LL, >40KB -> Simple (NCCL_TUNER_THRESHOLD).
++ *   - Patch file: patches/stageB-tuner-two-band.patch
++ * ============================================================ */
+ #include "enqueue.h"
+ #include "argcheck.h"
+ #include "coll_net.h"
+@@ -2148,6 +2153,29 @@ ncclResult_t ncclGetAlgoInfo(struct ncclComm* comm, struct ncclTaskColl* info, i
+                                        NCCL_NUM_ALGORITHMS, NCCL_NUM_PROTOCOLS, regBuff, &nMaxChannels));
+     NCCLCHECK(topoGetAlgoInfo(comm, info, nBytes, (float**)collCostTable, simInfo));
+   } else {
++    // === PerSize LL/Simple 双带覆盖 (Stage B, 2026-08-16) ===
++    // 目标: decode 小 allreduce(<=40KB) 走 LL, prefill 大 allreduce(>40KB) 走 Simple
++    // 依据: nccl-proto-threshold-scan / nccl-tuner-implementation (ADR-014)
++    // 仅干预 allreduce; 其余 collective 交回 NCCL 默认; 不碰 nChannels
++    if (info->func == ncclFuncAllReduce) {
++      size_t th = 40960u;
++      const char* tenv = ncclGetEnv("NCCL_TUNER_THRESHOLD");
++      if (tenv != NULL && tenv[0] != 0) {
++        long t = strtol(tenv, NULL, 10);
++        if (t > 0) th = (size_t)t;
++      }
++      int wantProto = (nBytes <= th) ? NCCL_PROTO_LL : NCCL_PROTO_SIMPLE;
++      for (int a = 0; a < NCCL_NUM_ALGORITHMS; a++) {
++        for (int pr = 0; pr < NCCL_NUM_PROTOCOLS; pr++) {
++          if (collCostTable[a][pr] == -1.0f) continue;  // IGNORE 防御
++          collCostTable[a][pr] = (pr == wantProto) ? 0.0f : 1e18f;
++        }
++      }
++      if (ncclGetEnv("NCCL_TUNER_DEBUG") != NULL) {
++        INFO(NCCL_TUNING, "PerSizeTuner: allreduce nBytes=%zu -> %s",
++             nBytes, wantProto == NCCL_PROTO_LL ? "LL" : "Simple");
++      }
++    }
+     NCCLCHECK(topoGetAlgoInfo(comm, info, nBytes, (float**)collCostTable, simInfo));
+     // NCCL_CTA_POLICY_EFFICIENCY requires user (non-symmetric) buffer registration (currently unsupported with MNNVL)
+     if ((comm->config.CTAPolicy & NCCL_CTA_POLICY_EFFICIENCY) && ncclGetEnv("NCCL_ALGO") == NULL &&

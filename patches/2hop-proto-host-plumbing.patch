@@ -1,0 +1,64 @@
+diff --git a/src/graph/tuning.cc b/src/graph/tuning.cc
+index 20f7d26..028142e 100644
+--- a/src/graph/tuning.cc
++++ b/src/graph/tuning.cc
+@@ -255,6 +255,10 @@ ncclResult_t ncclTopoTuneModel(struct ncclComm* comm, int minCompCap, int maxCom
+   comm->maxThreads[NCCL_ALGO_RING][NCCL_PROTO_LL128] = comm->maxThreads[NCCL_ALGO_TREE][NCCL_PROTO_LL128] =
+     getNthreads("NCCL_LL128_NTHREADS", ncclParamLl128Nthreads(), NCCL_LL128_MAX_NTHREADS / 4, NCCL_LL128_MAX_NTHREADS,
+                 NCCL_LL128_MAX_NTHREADS);
++  // AICAD 2-hop proto: reuse ring thread config (structurally a ring-like kernel).
++  comm->maxThreads[NCCL_ALGO_2HOP][NCCL_PROTO_SIMPLE] = comm->maxThreads[NCCL_ALGO_RING][NCCL_PROTO_SIMPLE];
++  comm->maxThreads[NCCL_ALGO_2HOP][NCCL_PROTO_LL] = comm->maxThreads[NCCL_ALGO_RING][NCCL_PROTO_LL];
++  comm->maxThreads[NCCL_ALGO_2HOP][NCCL_PROTO_LL128] = comm->maxThreads[NCCL_ALGO_RING][NCCL_PROTO_LL128];
+ 
+   int nNodes = comm->nNodes;
+   int nRanks = comm->nRanks;
+diff --git a/src/include/plugin/nccl_tuner.h b/src/include/plugin/nccl_tuner.h
+index 8b4f384..8529ac3 100644
+--- a/src/include/plugin/nccl_tuner.h
++++ b/src/include/plugin/nccl_tuner.h
+@@ -32,7 +32,8 @@ typedef ncclNvlDomainInfo_v6_t ncclNvlDomainInfo_t;
+ #define NCCL_ALGO_NVLS 4
+ #define NCCL_ALGO_NVLS_TREE 5
+ #define NCCL_ALGO_PAT 6
+-#define NCCL_NUM_ALGORITHMS NCCL_NUM_ALGORITHMS_V5 // Tree/Ring/CollNet*/PAT
++#define NCCL_ALGO_2HOP 7 // AICAD 2-hop proto (Form A-minimal, test-only)
++#define NCCL_NUM_ALGORITHMS NCCL_NUM_ALGORITHMS_V5 // Tree/Ring/CollNet*/PAT/2HOP
+ 
+ #define NCCL_PROTO_UNDEF -1
+ #define NCCL_PROTO_LL 0
+diff --git a/src/include/plugin/tuner/tuner_v5.h b/src/include/plugin/tuner/tuner_v5.h
+index 7ba2a33..3b196c9 100644
+--- a/src/include/plugin/tuner/tuner_v5.h
++++ b/src/include/plugin/tuner/tuner_v5.h
+@@ -16,7 +16,7 @@ typedef struct {
+   int maxRanksPerNvlDomain;           // maximum ranks across all NVLink domains
+ } ncclNvlDomainInfo_v5_t;
+ 
+-#define NCCL_NUM_ALGORITHMS_V5 7 // Tree/Ring/CollNet*/PAT
++#define NCCL_NUM_ALGORITHMS_V5 8 // Tree/Ring/CollNet*/PAT/2HOP (AICAD proto)
+ #define NCCL_NUM_PROTOCOLS_V5 3 // Simple/LL/LL128
+ #define NCCL_NUM_HW_LINKS_V5 3
+ #define NCCL_NUM_COMPCAPS_V5 4
+diff --git a/src/init.cc b/src/init.cc
+index 0c4554b..3ea480a 100644
+--- a/src/init.cc
++++ b/src/init.cc
+@@ -51,7 +51,7 @@
+ 
+ const char* ncclFuncStr[NCCL_NUM_FUNCTIONS] = {"Broadcast", "Reduce", "AllGather", "ReduceScatter", "AllReduce"};
+ const char* ncclAlgoStr[NCCL_NUM_ALGORITHMS] = {"Tree",     "Ring", "CollNetDirect", "CollNetChain", "NVLS",
+-                                                "NVLSTree", "PAT"};
++                                                "NVLSTree", "PAT", "2HOP"};
+ const char* ncclProtoStr[NCCL_NUM_PROTOCOLS] = {"LL", "LL128", "Simple"};
+ 
+ NCCL_PARAM(GroupCudaStream, "GROUP_CUDA_STREAM", NCCL_GROUP_CUDA_STREAM);
+@@ -978,7 +978,7 @@ static ncclResult_t initTransportsRank(struct ncclComm* comm, struct ncclComm* p
+   struct ncclTopoGraph* collNetDirectGraph = &comm->graphs[NCCL_ALGO_COLLNET_DIRECT];
+   struct ncclTopoGraph* nvlsGraph = &comm->graphs[NCCL_ALGO_NVLS];
+   struct ncclTopoGraph* graphs[NCCL_NUM_ALGORITHMS] = {treeGraph, ringGraph, collNetDirectGraph, collNetChainGraph,
+-                                                       nvlsGraph, nvlsGraph, treeGraph};
++                                                       nvlsGraph, nvlsGraph, treeGraph, ringGraph};
+ 
+   struct graphInfo {
+     int pattern;

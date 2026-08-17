@@ -1,0 +1,115 @@
+diff --git a/src/device/all_reduce.h b/src/device/all_reduce.h
+index f65eb82..c503571 100644
+--- a/src/device/all_reduce.h
++++ b/src/device/all_reduce.h
+@@ -223,6 +223,84 @@ __device__ __forceinline__ void runTreeSplit(int tid, int nthreads, struct ncclD
+     }
+   }
+ }
++
++/* ============================================================
++ * AICAD 2-hop allreduce proto (Form A-minimal, test-only).
++ *   - 4-rank schedule: RS(2)+AG(2) (vs ring RS(3)+AG(3)).
++ *   - Bilateral steps use BOTH ring edges via two Primitives
++ *     objects on disjoint connections:
++ *       primsFwd : send->next (ring->next), recv<-prev (ring->prev)
++ *       primsBwd : send->prev (ring->prev), recv<-next (ring->next)
++ *     group offset = Proto::MaxGroupWidth (treeSplit pattern).
++ *   - In-place only (sendbuff==recvbuff) so recvReduceCopy
++ *     accumulates (input[off]==output[off]); out-of-place falls
++ *     back to runRing for safety.
++ *   - Data volume/rank = 7 chunks = 1.75S (proto incl. P4 fix).
++ *   - Schedule matches twohop_algo.py mock (S1 validated).
++ * ============================================================ */
++template <typename T, typename RedOp, typename Proto>
++__device__ __forceinline__ void run2Hop(int tid, int nthreads, struct ncclDevWorkColl* work) {
++  const int nranks = ncclShmem.comm.nRanks;
++  if (nranks != 4 || work->sendbuff != work->recvbuff) {
++    // Proto scope: 4-rank in-place only; otherwise use the (correct) ring path.
++    runRing<T, RedOp, Proto>(tid, nthreads, work);
++    return;
++  }
++  ncclRing* ring = &ncclShmem.channel.ring;
++  const int ringIx = ring->index;
++  ssize_t gridOffset;
++  ssize_t channelCount;
++  ssize_t chunkCount;
++  ncclCollCbdPart(work, ncclShmem.channelId, Proto::Id, sizeof(T), (ssize_t*)nullptr, &gridOffset, &channelCount,
++                  &chunkCount);
++  const ssize_t loopCount = nranks * chunkCount;
++
++  Primitives<T, RedOp, FanSymmetric<1>, 1, Proto, 0> primsFwd(tid, nthreads, &ring->prev, &ring->next, work->sendbuff,
++                                                              work->recvbuff, work->redOpArg, 0, 0, 0, work);
++  Primitives<T, RedOp, FanSymmetric<1>, 1, Proto, 0> primsBwd(tid, nthreads, &ring->next, &ring->prev, work->sendbuff,
++                                                              work->recvbuff, work->redOpArg, Proto::MaxGroupWidth, 0,
++                                                              0, work);
++
++  for (ssize_t elemOffset = 0; elemOffset < channelCount; elemOffset += loopCount) {
++    ssize_t remCount = channelCount - elemOffset;
++    ssize_t c = chunkCount;
++    if (remCount < loopCount) c = alignUp(divUp(remCount, nranks), 16 / sizeof(T));
++    auto off = [&](int ci) -> ssize_t {
++      int k = ci % nranks;
++      if (k < 0) k += nranks;
++      return gridOffset + elemOffset + k * c;
++    };
++    auto ne = [&](int ci) -> ssize_t {
++      int k = ci % nranks;
++      if (k < 0) k += nranks;
++      ssize_t base = k * c;
++      return min(c, remCount - base);
++    };
++
++    // ---------------- RS step 1 (bilateral) ----------------
++    primsFwd.send(off(ringIx + 1), ne(ringIx + 1));                        // c_{r+1} -> next
++    primsFwd.send(off(ringIx + 2), ne(ringIx + 2));                        // c_{r+2} -> next
++    primsFwd.recvReduceCopy(off(ringIx), off(ringIx), ne(ringIx));        // x[r] += R_{r+1} (c_r from prev)
++    primsFwd.recv(off(ringIx + 1), ne(ringIx + 1));                        // carry = R_{r-1} c_{r+1}
++    primsBwd.send(off(ringIx - 1), ne(ringIx - 1));                        // c_{r-1} -> prev
++    primsBwd.recvReduceCopy(off(ringIx), off(ringIx), ne(ringIx));        // x[r] += R_{r-1} (c_r from next)
++
++    // ---------------- RS step 2 (forward) ----------------
++    primsFwd.send(off(ringIx + 1), ne(ringIx + 1));                        // carry c_{r+1} -> next
++    primsFwd.recvReduceCopy(off(ringIx), off(ringIx), ne(ringIx));        // x[r] += R_{r-2} -> fully reduced
++
++    // ---------------- AG step 3 (bilateral) ----------------
++    primsFwd.sendFromOutput(off(ringIx), ne(ringIx));                     // c_r* -> next
++    primsFwd.recv(off(ringIx - 1), ne(ringIx - 1));                       // c_{r-1}* <- prev -> x[r-1]
++    primsBwd.sendFromOutput(off(ringIx), ne(ringIx));                     // c_r* -> prev
++    primsBwd.recv(off(ringIx + 1), ne(ringIx + 1));                       // c_{r+1}* <- next -> x[r+1] (fwd src)
++
++    // ---------------- AG step 4 (forward) ----------------
++    primsBwd.sendFromOutput(off(ringIx + 1), ne(ringIx + 1));            // fwd c_{r+1}* -> prev
++    primsBwd.recv(off(ringIx + 2), ne(ringIx + 2));                       // c_{r+2}* <- next -> x[r+2]
++  }
++}
++
+ } // namespace
+ 
+ template <typename T, typename RedOp>
+@@ -786,3 +864,25 @@ struct RunWorkColl<ncclFuncAllReduce, T, RedOp, NCCL_ALGO_TREE, NCCL_PROTO_LL128
+     runTreeSplit<T, RedOp, ProtoLL128>(tid, nthreads, work);
+   }
+ };
++
++template <typename T, typename RedOp>
++struct RunWorkColl<ncclFuncAllReduce, T, RedOp, NCCL_ALGO_2HOP, NCCL_PROTO_SIMPLE> {
++  __device__ __forceinline__ void run(int tid, int nthreads, struct ncclDevWorkColl* work) {
++    using Proto = ProtoSimple<ALLREDUCE_CHUNKSTEPS / ALLREDUCE_SLICESTEPS, ALLREDUCE_SLICESTEPS>;
++    run2Hop<T, RedOp, Proto>(tid, nthreads, work);
++  }
++};
++
++template <typename T, typename RedOp>
++struct RunWorkColl<ncclFuncAllReduce, T, RedOp, NCCL_ALGO_2HOP, NCCL_PROTO_LL> {
++  __device__ __forceinline__ void run(int tid, int nthreads, struct ncclDevWorkColl* work) {
++    run2Hop<T, RedOp, ProtoLL>(tid, nthreads, work);
++  }
++};
++
++template <typename T, typename RedOp>
++struct RunWorkColl<ncclFuncAllReduce, T, RedOp, NCCL_ALGO_2HOP, NCCL_PROTO_LL128> {
++  __device__ __forceinline__ void run(int tid, int nthreads, struct ncclDevWorkColl* work) {
++    run2Hop<T, RedOp, ProtoLL128>(tid, nthreads, work);
++  }
++};

@@ -1,0 +1,22 @@
+# /etc/systemd/system/vllm-tp4-head.service (<node1>, head/rank0)
+# P1 (2026-08-17): Wants 增加 docker.service（原仅 After）
+[Unit]
+Description=TP4 vLLM head (rank0) with self-heal
+Documentation=file:///opt/aicad-prod/scripts/start_tp4_head.sh
+After=remote-fs.target network-online.target docker.service
+Wants=network-online.target remote-fs.target docker.service
+StartLimitIntervalSec=1800
+StartLimitBurst=20
+
+[Service]
+User=<svc-user>
+EnvironmentFile=/opt/aicad-prod/secrets/vllm.env
+Type=simple
+Environment=HOME=/home/<svc-user>
+ExecStart=/opt/aicad-prod/scripts/monitor_tp4_head.sh
+Restart=always
+RestartSec=15
+TimeoutStartSec=1500
+
+[Install]
+WantedBy=multi-user.target

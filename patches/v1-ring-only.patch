@@ -1,0 +1,47 @@
+diff --git a/src/transport.cc b/src/transport.cc
+index 9151255..4dc559e 100644
+--- a/src/transport.cc
++++ b/src/transport.cc
+@@ -5,6 +5,11 @@
+  * See LICENSE.txt for more license information
+  *************************************************************************/
+ 
++/* ============================================================
++ * AICAD custom patch v1 (this file): ring-adjacent P2P filtering (ADR-015).
++ *   - ncclTransportP2pConnect: skip inter-node peers not ring prev/next.
++ *   - Patch file: patches/v1-ring-only.patch
++ * ============================================================ */
+ #include "comm.h"
+ #include "info.h"
+ #include "bootstrap.h"
+@@ -46,11 +51,18 @@ ncclResult_t ncclTransportP2pConnect(struct ncclComm* comm, int channelId, int n
+   TRACE(NCCL_INIT, "nsend %d nrecv %d", nsend, nrecv);
+   struct ncclChannel* channel = &comm->channels[channelId];
+   uint64_t mask = 1ULL << channel->id;
++  int ringPrev = channel->ring.prev;
++  int ringNext = channel->ring.next;
+   for (int i = 0; i < nrecv; i++) {
+     int peer = peerRecv[i];
+     if (peer == -1 || peer >= comm->nRanks || peer == comm->rank || channel->peers[peer]->recv[connIndex].connected) {
+       continue;
+     }
++    // RING-ONLY PATCH: skip inter-node peers that are not ring-adjacent (prev/next).
++    if (comm->peerInfo[peer].hostHash != comm->peerInfo[comm->rank].hostHash &&
++        peer != ringPrev && peer != ringNext) {
++      continue;
++    }
+     comm->connectRecv[peer] |= mask;
+   }
+   for (int i = 0; i < nsend; i++) {
+@@ -58,6 +70,11 @@ ncclResult_t ncclTransportP2pConnect(struct ncclComm* comm, int channelId, int n
+     if (peer == -1 || peer >= comm->nRanks || peer == comm->rank || channel->peers[peer]->send[connIndex].connected) {
+       continue;
+     }
++    // RING-ONLY PATCH: skip inter-node peers that are not ring-adjacent (prev/next).
++    if (comm->peerInfo[peer].hostHash != comm->peerInfo[comm->rank].hostHash &&
++        peer != ringPrev && peer != ringNext) {
++      continue;
++    }
+     comm->connectSend[peer] |= mask;
+   }
+   return ncclSuccess;

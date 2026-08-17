@@ -1,0 +1,24 @@
+# vllm-tp4-worker.service (<node2>/03/04, worker/rank1-3)
+# P1 (2026-08-17): Wants 增加 docker.service
+# 注意：worker 服务名与 head 相同结构，仅 ExecStart 指向 monitor_tp4_worker.sh
+# 本文件为参考模板 —— 以各机 systemctl cat vllm-tp4-worker.service 为准
+[Unit]
+Description=TP4 vLLM worker (rankN) with self-heal
+Documentation=file:///opt/aicad-prod/scripts/start_tp4_worker.sh
+After=remote-fs.target network-online.target docker.service
+Wants=network-online.target remote-fs.target docker.service
+StartLimitIntervalSec=1800
+StartLimitBurst=20
+
+[Service]
+User=<svc-user>
+EnvironmentFile=/opt/aicad-prod/secrets/vllm.env
+Type=simple
+Environment=HOME=/home/<svc-user>
+ExecStart=/opt/aicad-prod/scripts/monitor_tp4_worker.sh
+Restart=always
+RestartSec=15
+TimeoutStartSec=1500
+
+[Install]
+WantedBy=multi-user.target
