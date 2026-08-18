@@ -98,18 +98,20 @@ bash tools/healthcheck.sh --role head   # 只读探针
 
 ---
 
-## 5. 生产配置快照（2026-08-17）
+## 5. 生产配置快照（2026-08-18 对标调优终态）
 
 | 项 | 值 |
 |---|---|
-| 引擎 | vLLM TP4 · max-num-seqs 6 · util 0.65 · Prefix KV · 400k |
+| 引擎 | vLLM TP4 · max-num-seqs **12** · util **0.80** · Prefix KV · **600k** · capture **96** · bt **4096** |
+| 投机 | dspark **k=7** 静态（无 ladder）；接受率 0.94/0.86/0.77/0.69/0.61/0.49/0.35 平滑衰减 |
+| ulimit | nofile **1048576**（8/18 由默认 1024 上调） |
 | NCCL | ring-only 2.30.7 hardened **2be94172**；ALGO=RING；MIN_CH4/**MAX_CH4（B1：16→4，2026-08-17）**/BUFFSIZE 8M |
 | tuner | `NCCL_TUNER_THRESHOLD=40960`（≤40KB→LL />40KB→Simple）+ `NCCL_NET_PLUGIN=none` |
 | IB | HCA 4 口；GID=3；MERGE_NICS=0；TOS=46；硬编码 per-peer 映射 |
 | systemd | Restart=always；StartLimit 1800s/20；healthcheck timer 60s |
 | 编排 | `start_tp4_cluster.sh`（head-first 幂等）；worker 先启→head 后启 |
 
-> 完整参数见 `config/production-nccl-env.md`；权限：`config/` 为服务器快照，权威源在服务器 `/opt/aicad-prod/`。
+> 8/18 变更：k5+ladder→k7 无 ladder、gmu 0.65→0.80、seqs 6→12、capture 64→96、max-model-len 400k→600k、ulimit 1048576；bt 8264 曾致 c6 prefill 退化已回退 4096。完整参数见 `config/production-nccl-env.md`；权限：`config/` 为服务器快照，权威源在服务器 `/opt/aicad-prod/`。
 
 ---
 

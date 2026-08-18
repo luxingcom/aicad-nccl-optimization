@@ -1,7 +1,7 @@
-# 维护方案（Maintenance Plans）v1.5-R11
+# 维护方案（Maintenance Plans）v1.6.2-TP4
 
-**日期**：2026-08-12（R11 修订）｜**维护**：Docu｜**前置**：必须先读 ops/ops-discipline-quickref.md（纪律权威）
-**R11 变更**：灰度示例改 util 0.65/seqs 6 已落地；shim 回退锚点 v7；重启复核项改 isolcpus=8-9。
+**日期**：2026-08-18（8/18 对标调优修订）｜**维护**：Docu｜**前置**：必须先读 ops/ops-discipline-quickref.md（纪律权威）
+**8/18 变更**：灰度示例改 k=7 无 ladder / util 0.80 / seqs 12 / capture 96 / max-model-len 600000 / bt 4096 已落地；bt8264→4096 回退经验已记录。
 
 ---
 
@@ -32,7 +32,7 @@ ssh <node1> "cd /opt/aicad-prod/scripts && bash start_tp4_cluster.sh"
 
 ## 2. 灰度发布流程（参数/补丁变更）
 
-1. 目标参数一次只改一档（R11 已落地：util 0.65 / seqs 6 / capture 64；后续如 0.65→0.70 单步 +0.05）。
+1. 目标参数一次只改一档（8/18 已落地：k=7 无 ladder / util 0.80 / seqs 12 / capture 96 / max-model-len 600000 / bt 4096；后续如需 0.80→0.85 单步 +0.05）。
 2. 改脚本 → `.bak-<tag>` → `check_vllm_script.sh` → **先 head 验证**（容器起 + API 200 + 性能冒烟）。
 3. head 稳定后 worker 依次上线；全程保留 30 分钟观察窗口（prefix 命中、latency、OOM 日志）。
 4. 异常 → 立即还原 `.bak-<tag>`（R11 前版本见 rollback §2.8）重走启动流程。

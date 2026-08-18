@@ -29,7 +29,7 @@
 - **用途**：vLLM 启动脚本自检（防三类事故：注释吞续行/关键参数缺失/sudo $HOME）。
 - **调用**：`bash check_vllm_script.sh <script_path>`。
 - **返回**：0=通过 1=失败 2=用法错误（编排前必跑）。
-- **注意**：A 组关键参数已同步生产（`max-model-len 400000` + `VLLM_USE_BREAKABLE_CUDAGRAPH=1`，8/12 14:48 更新），与 start_tp4_* 一致。
+- **注意**：A 组关键参数已同步生产（`max-model-len 600000` + `VLLM_USE_BREAKABLE_CUDAGRAPH=1`，8/18 对标调优更新），与 start_tp4_* 一致。
 
 ### A.5 start_embed_8022.sh（03/04 生产，01/02 备用）
 - **用途**：embed 服务（anemll-embed-8022，KV 4GB，max-num-seqs 32 / len 8192）。

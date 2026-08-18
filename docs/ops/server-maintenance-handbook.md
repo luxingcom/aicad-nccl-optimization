@@ -1,8 +1,8 @@
-# 服务器维护手册（Server Maintenance Handbook）v1.5-R11
+# 服务器维护手册（Server Maintenance Handbook）v1.6.2-TP4
 
-**日期**：2026-08-12｜**维护**：Docu｜**权威文档**：`README.md`、`rollback-anchors-2026-08-12.md`、`ops/ops-discipline-quickref.md`
+**日期**：2026-08-18｜**维护**：Docu｜**权威文档**：`README.md`、`rollback-anchors-2026-08-12.md`、`ops/ops-discipline-quickref.md`
 **适用**：DGX Spark 4 机 TP4 生产（01=186/.60 02=187/.58 03=188/.55 04=189/.59）
-**本版变更**：R11 修复后配置基线（seqs=6、isolcpus=8-9、EngineCore 15-19、capture 64、StartLimit 1800/20、互杀守卫、本地 serving）
+**本版变更**：8/18 对标调优终态（k=7 无 ladder、capture 96、gmu 0.80、seqs 12、bt 4096、max-model-len 600000、ulimit 1048576）
 
 ---
 
@@ -47,21 +47,22 @@
 
 > 端口以 2026-08-13 `docker ps` 实测为准；vLLM/litellm 为 host 网络（无端口映射）。网关 8003 上游：chat→.186:8001，embed→.188:8022。
 
-## 2. 配置基线（R11 参数全集，生产脚本实测 8/12 23:33）
+## 2. 配置基线（生产参数全集，8/18 对标调优终态）
 
 | 组 | 参数 | 值 | 说明 |
 |---|---|---|---|
-| 模型 | `--max-model-len` | 400000 | 400k |
-| 服务 | `--max-num-seqs` | **6** | seqs=6（R11 由 12 下调，规避 OOM/长稳） |
+| 模型 | `--max-model-len` | **600000** | 8/18 由 400000 上调（KV 池 3.17M tokens） |
+| 服务 | `--max-num-seqs` | **12** | 8/18 由 6 上调（对标：capture=96=12×(7+1)） |
 | KV | `--kv-cache-dtype` | nvfp4_ds_mla | MLA 量化 |
-| 显存 | `--gpu-memory-utilization` | **0.65** | R11 已落地 |
+| 显存 | `--gpu-memory-utilization` | **0.80** | 8/18 由 0.65 上调（对标），KV 池 3.17M tokens |
 | 前缀 | `--enable-prefix-caching` | on | Prefix KV |
-| CUDA Graph | `--max-cudagraph-capture-size` | **64** | **fix72**：`--cudagraph-capture-sizes 1 2 4 8 16 24 32 36 40 48 56 64`（R11，由 80/1..80 下调） |
-| 投机 | `--speculative-config` | dspark,5 tokens | 不变 |
-| 分布式 | `--tensor-parallel-size 4 --nnodes 4` | mp 后端 | 不变 |
+| CUDA Graph | `--max-cudagraph-capture-size` | **96** | 8/18 由 64 上调（=seqs 12×(k+1)=12×8）；`--cudagraph-capture-sizes 1 2 4 8 16 24 32 36 40 48 56 64` |
+| 投机 | `--speculative-config` | **dspark,7 tokens（静态，无 ladder）** | 8/18 由 5 上调；k=7 接受率曲线平滑衰减（0.94/0.86/0.77/0.69/0.61/0.49/0.35） |
+| 批量 | `--max-num-batched-tokens` | **4096** | 8/18 试 8264 后回退 4096（bt8264 致 c6 prefill 调度退化） |
 | 补丁 | `LD_PRELOAD` | `/opt/libncclpin.so /opt/nccl-ringonly/libnccl.so.2` | **shim v8** + ring-only |
 | CPU | `--cpuset-cpus` | 1-19 | **NCCL/PT 线程→8-9（isolcpus=8-9）；EngineCore→15-19**（R11） |
-| NCCL | ALGO=RING MIN_NCHANNELS=2 IB_HCA=4口 TOS=46 GID_INDEX=3 | env 全集见 runbook §A.3 | 不变 |
+| ulimit | `nofile` | **1048576** | 8/18 由默认 1024 上调（对标） |
+| NCCL | ALGO=RING MIN_NCHANNELS=4 MAX_NCHANNELS=4 IB_HCA=4口 TOS=46 GID_INDEX=3 BUFFSIZE=8M | env 全集见 config/production-nccl-env.md | B1 终态（8/17 固化） |
 | systemd | StartLimit | **IntervalSec=1800 / Burst=20** | R11（由 600/8 放大） |
 | systemd | Restart=always RestartSec=15 TimeoutStartSec=1500 User=<svc-user> | | 不变 |
 | 自愈 | 互杀守卫 | **集群未成形时不动 head** | R11 新增（防冷启动互杀） |

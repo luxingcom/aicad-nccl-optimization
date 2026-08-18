@@ -1,8 +1,8 @@
-# 生产启停纪律与运行反馈响应速查（Ops Discipline QuickRef）v1.5-R11
+# 生产启停纪律与运行反馈响应速查（Ops Discipline QuickRef）v1.6.2-TP4
 
-**日期**：2026-08-12（R11 修订）｜**维护**：Docu｜**依据**：生产脚本实测 + 8/11-8/12 事故复盘
+**日期**：2026-08-18（8/18 对标调优修订）｜**维护**：Docu｜**依据**：生产脚本实测 + 8/18 调优终态
 **引用**：本文件为脚本帮助头/维护手册/tools-index 的**唯一纪律权威**。变更前先读本文件。
-**R11 变更**：隔离核 **8-9**（NCCL 绑 8-9）、EngineCore **15-19**、seqs=**6**、util=**0.65**、StartLimit **1800/20**、互杀守卫（冷启动未成形不动 head）、本地 serving（NFS 恢复中）。
+**8/18 变更**：k=7 静态（无 ladder）、util 0.80、seqs 12、capture 96、max-model-len 600000、ulimit 1048576、bt 4096（8264 已回退）。
 
 ---
 
@@ -52,12 +52,13 @@ docker logs vllm-tp4-rank0 --tail 50 | grep -i "NCCL version"  # 期望 2.30.7+c
 
 **启动即停**：systemd 已在 `multi-user.target` 开机自启，正常重启**勿手动启**（head monitor 会自动拉起 head+清 worker 链式自愈）。
 
-## §3 灰度 / 参数调整（R11：util 0.65 / seqs=6 已落地）
+## §3 灰度 / 参数调整（8/18 对标调优终态：k=7 无 ladder / util 0.80 / seqs 12 / capture 96 / max-model-len 600000 / bt 4096 / ulimit 1048576）
 
 1. 改 `start_tp4_head.sh`（+ worker 若参数一致）→ 先 `cp` `.bak-<tag>`。
-2. `bash check_vllm_script.sh start_tp4_head.sh` 必须全过（check 关键参数已同步 `max-model-len 400000` + `VLLM_USE_BREAKABLE_CUDAGRAPH=1`）。
+2. `bash check_vllm_script.sh start_tp4_head.sh` 必须全过（check 关键参数已同步 `max-model-len 600000` + `VLLM_USE_BREAKABLE_CUDAGRAPH=1`）。
 3. 停→改→启走 §1/§2。**执行口径**：全局参数（util/seqs/capture）采用四机并发重建（head+worker 同窗口一次到位）；单机局部参数先 head 后 worker。
 4. 回退：还原 `.bak-<tag>`（R11 前版本见 rollback §2.8）重走 §2。
+5. **8/18 经验**：`--max-num-batched-tokens` 8264 曾致 c6 prefill 调度退化（131K 饿死），回退 4096 后全部恢复——批量参数改动需 c6 长档专项复测。
 
 ## §4 运行反馈错误码速查（帮助头 EXITCODES 引用此表）
 
@@ -66,7 +67,7 @@ docker logs vllm-tp4-rank0 --tail 50 | grep -i "NCCL version"  # 期望 2.30.7+c
 | 8001 不通 / curl 000 | head 未就绪或崩溃 | `ss -ltnp\|grep 25999` 查 TCPStore；head-first 重来；权重加载需 5-8 分钟 |
 | 容器崩溃循环（Up(restarting)） | systemd 自愈反复失败 | `journalctl -u vllm-tp4-head -n 100` 定位；NCCL_DEBUG 日志 `/var/log/vllm/nccl-*.log`；banner 查 `NCCL version` 是否 13.3（LD_PRELOAD 失效） |
 | NCCL 110（ibv_modify_qp） | 补丁库/PEER_HCA 失配 | 查 PEER_HCA 表（runbook §A.4）+ banner `2.30.7+cuda13.0`；`/opt/nccl-ringonly` md5 `b7784b49885659c27765e648884e4edd` |
-| KV 不足 / OOM | util 或 max-num-seqs 过高 | 清 buff/cache；降 `--max-num-seqs`（6→4）或 util 0.65→0.60；勿动 400k 长度 |
+| KV 不足 / OOM | util 或 max-num-seqs 过高 | 清 buff/cache；降 `--max-num-seqs`（12→8）或 util 0.80→0.72；勿动 600k 长度 |
 | prefix 命中为 0 | 缓存未生效 | 确认 `--enable-prefix-caching` 在 rank0；四机 KV 状态 `docker logs ... \| grep prefix`；请求需含相同前缀 |
 | 单 rank 掉线但 head API 200 | worker 故障 | monitor 互杀守卫：仅集群成形时触发 head 重建（rm rank0）；人工勿插手，观察 5 分钟 |
 | healthy 但推理错/超时 | 权重加载中或队列积压 | 等待；`curl /v1/models` 确认 served-model-name；litellm 并发 12 满则排队 |
