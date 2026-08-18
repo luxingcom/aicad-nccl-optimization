@@ -150,7 +150,7 @@ def run_one(session, url, headers, model, prompt, max_tokens, timeout, connect_t
     deadline = t0 + timeout   # 硬性 wall-clock 截止（requests 的 read timeout 是"每读"而非总量，须自行兜底）
     try:
         r = session.post(url, json=payload, headers=headers, stream=True,
-                         timeout=(connect_timeout, min(timeout, 60)))
+                         timeout=(connect_timeout, min(timeout, 600)))  # LR-PATCH: 600s per-read cap for long 131K prefill
     except requests.exceptions.Timeout as e:
         return _err("timeout", f"timeout:{type(e).__name__} after {timeout}s")
     except requests.exceptions.ConnectionError as e:

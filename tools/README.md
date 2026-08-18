@@ -7,7 +7,10 @@
 
 | 文件 | 用途 | 来源 |
 |---|---|---|
-| `bench_v2.py` | **v2 基准测试主脚本**（32 档：DE 12 + PR 20）。QA 整改后 `--key` 默认取 `VLLM_API_KEY` env（显式 --key 优先），避免 key 落命令行/日志 | `/opt/aicad-prod/bench_v2.py`（md5 f72e9e84→56ad5ef2） |
+| `bench_v2.py` | **v2 基准测试主脚本**（32 档：DE 12 + PR 20）。QA 整改后 `--key` 默认取 `VLLM_API_KEY` env（显式 --key 优先），避免 key 落命令行/日志。含 **LR-PATCH**（131K 长前缀 prefill 600s 每读超时） | `/opt/aicad-prod/bench_v2.py`（md5 f72e9e84→56ad5ef2） |
+| `compare_bench.py` | 对比两次 `summary_v2.json`（当前 vs 基线），输出 DE/PR 逐档 delta% 与判定 | 本地交付物（2026-08-18） |
+| `analyze_bench.py` | 将 `summary_v2.json` 归一化为对比表（DE/PR/TTFT/接受率/dspark/k） | 本地交付物（2026-08-18） |
+| `gen_report.py` | 生成「当前配置 vs 真B1」全量基准对比报告（支持 131K LR 档位覆盖/补全） | 本地交付物（2026-08-18） |
 | `run_benchv2_full.sh` | 全量基准一键运行（32 档循环），API key 已脱敏 | 本地交付物 |
 | `healthcheck.sh` | 只读健康探针（P0）：容器运行态 + head 8001 /health；`--role` 可自动探测 | `/opt/aicad-prod/scripts/healthcheck.sh` |
 | `healthcheck-rebuild.sh` | 主动重建（P1）：探针失败 → `docker rm -f` 本机容器 → systemd 自愈重建；cooldown 1800s | `/opt/aicad-prod/scripts/healthcheck-rebuild.sh` |
