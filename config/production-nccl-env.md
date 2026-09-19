@@ -69,10 +69,12 @@
 
 | 角色 | 文件 | md5 |
 |---|---|---|
-| 生产（当前） | `/opt/nccl-ringonly/libnccl.so.2.30.7` | `2be94172c1172734d00dee9ff7d788bd` |
+| 生产（08-16 锚点） | `/opt/nccl-ringonly/libnccl.so.2.30.7` | `2be94172c1172734d00dee9ff7d788bd` |
 | 备份（stageB hardened 前） | `/opt/nccl-ringonly/libnccl.so.2.30.7.bak-hardened-20260816` | 3d9cf539（阶段B glibcfix） |
 | 归档 | `/opt/aicad-prod/backup/nccl-official-2307-*` | 见各归档 MD5-RECORD.txt |
 | **v5 库（ADR-016，待窗口上线）** | 构建后四机同 md5 安装 | **上线后在此登记新 md5**（v5 源码变更 ⇒ md5 必变 ⇒ 不得沿用本表任何旧值） |
 
+> ⚠️ **生产形态迁移（2026-09-04，V5-ar2 晋升）**：生产 NCCL 已迁移为**容器内集成形态**——同路径替换 libnccl + 独立 libar2，宿主 `/opt/nccl-ringonly/` 的 `2be94172` 退为历史锚点。在役指纹：**libnccl `51e36db5`（R1-diag 镜像 `d118ceb2`）+ libar2 `343bea89`（四机 `~/v5libs/` 一致）**。完整血统见 `docs/v5-ar2/V5-MD5-RECORD.txt`，语义消歧见 `docs/VERSION-LANDSCAPE.md`。回滚：env `AR2_V5=0` 一键全原生（软）/ 还原 `.bak-v5prod-20260904`（硬）。
+
 > ⚠️ 生产库二进制不随资料包分发；重建指引见 `patches/README.md`。
-> ⚠️ **指标登记纪律**：v5 上线时必须实测登记新 md5，并同步 `tools/precheck.sh` 的期望值与验收单。
+> ⚠️ **指标登记纪律**：v5-netdev 上线时必须实测登记新 md5，并同步 `tools/precheck.sh` 的期望值与验收单。

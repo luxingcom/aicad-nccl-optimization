@@ -14,6 +14,13 @@
 | `gen_devmap.py` | **拓扑 → 设备映射**：校验（环闭合/口用满 0..3）后生成 `NCCL_RING_DEV_MAP` 串与 `ring-devmap.json`（配合 v5 补丁，换拓扑免重编库） | 坑1、ADR-016 |
 | `doctor.sh` | **运行期全量体检**（只读）：容器真实 env（坑9）、NCCL_DEBUG_FILE 落点可写（坑4）、LD_PRELOAD 路径存在性（错误4）、RING-ONLY 日志条数（库生效铁证）、错误签名扫描、API 探测与 API_KEY 四机指纹（坑10）；`--ips` 四机巡检 | 坑4/9/10、错误4 |
 
+### ar2 工具（v1.2 新增，2026-09-19，配合 docs/v5-ar2/）
+
+| 文件 | 用途 | 来源 |
+|---|---|---|
+| `ar2/ar2_probe.cu` / `ar2/ar2_selftest.cpp` | ar2 引擎探针与 CPU 自测（selftest 10/10） | `~/sparkring-kit/ringonlyV5/tools/`（01 节点） |
+| `ar2/run_reg.sh` / `run_s2.sh` / `run_win.sh` | V5 窗口运行脚本（容器起停/多机协同；用户名已占位化） | 同上 |
+
 ### 基准与运维（原有）
 
 | 文件 | 用途 | 来源 |

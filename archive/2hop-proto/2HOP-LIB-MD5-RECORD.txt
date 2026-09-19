@@ -1,0 +1,33 @@
+# 2-hop 项目 lib MD5 记录表 (D 收尾归档)
+# 生成: 2026-08-17 by Rex/SRE | 复核: 与 /opt/2hop-s1/proto-lib, /opt/nccl-ringonly 实测一致
+# 角色: proto-lib = 2-hop 试验库 (仅供测试); prod-lib = 生产 hardened (绝不改动)
+# 说明: cfa8c14c 与 d3fc78a4 二进制已不在磁盘, 仅存于报告引用, 已显式标注; 均可用 git bundle 源码重建.
+
+# ============================================================
+# 1. 2-hop proto 库演进 (chronological)
+# ============================================================
+2f21f6b9dd7b3d31c1d51e2ea047cd4a  ring-fallback (before-tuner)   -> archived libs/libnccl.so.2.30.7.before-tuner   (60,551,320 B)
+d12f3f3f9fcd8ec65e7b4a2f63e3218e  +tuner (stageB hardened 移植)  -> archived libs/libnccl.so.2.30.7.step1-tuner    (60,545,792 B)
+d3fc78a4????????????????????????  +device table 修复 (根因闭环证据: 2HOP+runRing->ok=True 6.0/6.0/6.0)
+                                  [BINARY NOT ON DISK] 记录于 s3-step2-diagnosis-result / s3-final-adjudication
+cfa8c14cbd21de1e7a1fcd26ae667aff  form C pairwise kernel (A-2a)
+                                  [BINARY NOT ON DISK] 记录于 s3-step2a-formc-result-rex-2026-08-17.md
+c47b463796a058851e17d1dbde21d580  step2-carry (诊断 carry 中间版) -> archived libs/libnccl.so.2.30.7.step2-carry    (60,552,952 B)
+9176e15625c05a331b7abfd655eef6cb  carry 最终版 (A-2b)            -> archived libs/libnccl.so.2.30.7.carry-final    (60,791,752 B)
+                                  == /opt/2hop-s1/proto-lib/libnccl.so.2.30.7 (同文件)
+
+# ============================================================
+# 2. 生产库 (只读锚点, 绝不改动)
+# ============================================================
+2be94172c1172734d00dee9ff7d788bd  PROD /opt/nccl-ringonly/libnccl.so.2.30.7 (Stage B hardened 双分支加固版)
+2be94172c1172734d00dee9ff7d788bd  backup/nccl-official-2307-hardened-20260816/build/lib/libnccl.so.2.30.7 (同源)
+b7784b49885659c27765e648884e4edd  .bak-stageB-prod-20260816 / .bak-stageB (stageB 前生产)
+3d9cf539d2ed269ccaa49a46a98d7eb0  .bak-hardened-20260816 (hardened 前) == stageB-glibcfix build
+4cc43e3b25ddf275701c11b3d566b686  .bak-v2 (v2 基线) == tp4-20260812/artifacts
+9cdb26dc83a27a6c02031d7cb7f9eceb  stageB-20260816 build (stageB 首次)
+
+# ============================================================
+# 3. 生产问题修复锚点 (Task 2 相关)
+# ============================================================
+f72e9e84397ebd8cb6ffbcc8825535bf  /opt/aicad-prod/bench_v2.py (60s timeout fix, 生产在位, 43,868 B)
+6ed8ce93db5a2c95a4cbd8a20a42ebb6  /opt/aicad-prod/backup/bench_v2.py.bak-60s-fix-20260816 (修复前备份)

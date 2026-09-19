@@ -1,0 +1,64 @@
+NCCL 2.30.7 ring-only Stage B hardened (dual-branch) archive record
+date: 2026-08-16
+git HEAD: 0dd44cd (PerSizeTuner dual-branch hardening)
+branch: nccl-2307-hardened
+tags: nccl-2307-stageB-hardened (0dd44cd)
+
+build env: anemll/dspark-vllm-gx10:0.2.1-v026.0 (glibc 2.35, CUDA 13.0)
+build cmd: make -j src.build CUDA_HOME=/usr/local/cuda NVCC_GENCODE=-gencode=arch=compute_121,code=sm_121
+build dir cleaned via sudo rm -rf build before compile
+
+lib md5:
+  StageB hardened   build/lib/libnccl.so.2.30.7 = 2be94172c1172734d00dee9ff7d788bd  GLIBC_MAX=2.34  LIB_LOAD_OK (anemll img)
+  (prev glibcfix)   build/lib/libnccl.so.2.30.7 = 3d9cf539d2ed269ccaa49a46a98d7eb0  GLIBC_MAX=2.34
+
+change vs stageB-glibcfix (3d9cf539):
+  - extract per-size LL/Simple override into ncclPersizeTunerOverride() (static, enqueue.cc)
+  - apply in BOTH tuner branches: if (comm->tuner != NULL, SPCX present) after getCollInfo,
+    and else (tuner == NULL) before topoGetAlgoInfo (else behavior unchanged)
+  - removes implicit dependency on NCCL_NET_PLUGIN=none (no more silent per-size failure
+    if an external/SPCX tuner gets loaded in the future)
+  - constraints preserved: allreduce only, skip IGNORE(-1.0) combos, no nChannels touch
+
+patches: patches/v1-ring-only.patch, patches/v4-netdev-hardcode.patch,
+         patches/stageB-tuner-two-band.patch, patches/stageB-hardened-two-branch.patch
+
+verification status:
+  - GLIBC_MAX = 2.34 (constraint <=2.34)                          PASS
+  - anemll image LD_PRELOAD + ctypes load (LIB_LOAD_OK)           PASS
+  - ncclGetVersion symbol present                                  PASS
+  - four-node A/B bench + SPCX-hijack scenario                    PENDING (production window;
+    see SPCX_验证计划.md; stub tuner source: spcx_stub_tuner.c)
+
+test artifacts (this dir):
+  spcx_stub_tuner.c      stub tuner exporting ncclTunerPlugin_v6 (simulates SPCX hijack;
+                         deliberately conflicts with per-size policy to prove hardening)
+  SPCX_验证计划.md         window-time verification plan (baseline / SPCX-hijack / control)
+aaa84d8317aff0aed01bc1844a0b1a4a  ringonlyV5-1.0.0-src-20260904.tar.gz
+133efcd010ba63f116ade4336e7f9d02  ringonlyV5-1.0.0-src-20260904.tar.gz
+2026-09-04 定版: libnccl=4d8ebaaf libar2=343bea89 (生产镜像 81a0c910)
+4d8ebaafd3133835a4003e00ce1076b0  /home/<user>/v5libs/libnccl.so.2  (生产镜像定版)
+343bea894792b6a83e9a5542995b00d2  /home/<user>/v5libs/libar2.so.1.0.0
+
+## 2026-09-04 R3 多 QP 带宽工程（负结果, 未晋升）
+- libar2.so.1.0.0 `f47b21fa`（R3 定版: 多 QP 条带 + 旗标字 + AR2_QPS + defaults env 死代码修复;
+  AR2_VERSION=2）—— 留库资产, **未进生产**（微基准 nqp=1/2/4 无带宽收益, 见 R3-REPORT-20260904.md）
+- ar2_probe `34fbf797`（smax 与库同源读 AR2_SMAX）
+- 生产现役不变: libnccl `51e36db5`（R1 cap-snap 版）+ libar2 `343bea89`; 镜像 R1-diag `d118ceb2`
+- 四机 ~/v5libs 已同步至生产对（此前 libnccl 滞留 36c26ab6 已纠正）
+- 中间版血统: 4547858e(首编) → 45cbfd9f(defaults 修复) → f47b21fa(launch 留痕, 定版)
+f47b21fa3a59668472c4866cf94c8b64  libar2.so.1.0.0 (R3)
+
+## 2026-09-04 M2GI 图内集成 (GI-C/GI-A, E2E 负结果, 未晋升; 报告=m2gi-window/M2GI-COMPARE-REPORT-20260904.md)
+- libar2.so.1.0.0 `0e170099`（M2GI 定版: capture_op_stream/layer_register/layer_drive 三 API
+  + gtab[64] + AR2_MAX_LAYER_OPS 64→128 + **op_submit 调用方流修复** + arena 真错打印）
+  —— 机制验证完备 (四机单元/生产 boot/2h 满载零错), E2E DE 中位 -2.96%, **未进生产**
+- 血统: 99eb78f3(首编, op_submit 断陷未修) → 7f6224ff(流修复) → a0236a6a(真错打印) → 0e170099(128 上限定版)
+- 镜像: `...-TP4-Ring-V5-M2GI` digest `dd7305d8` (基线 R5 + 补丁 vLLM 3 件 + 0e170099); 测试 tag M2GI-DEV 已删
+- 生产现役不变: libnccl `51e36db5` + libar2 `343bea89` (R1-diag `d118ceb2` 镜像)
+- 源码两树同步: ringonlyV5/src 与 m2gi-window/build 一致 (md5 核对)
+# 2026-09-05 P1 窗口: 多 block kernel(mb)+16B 向量化+CQE 尺寸门控解耦+profiling 插桩 (P1-REPORT-20260905.md)
+610c77c19920a736a71c7b9d796198e9  ar2_core.cpp
+575ba87d247d530ecccf52ef0cdda4f0  ar2_dev_cuda.cu
+8692d8777b98dc2a048b0fcaa9576953  ar2_internal.hpp
+a10d97eb8fdfaf49999270fe82202670  ar2_dev_cpu.cpp

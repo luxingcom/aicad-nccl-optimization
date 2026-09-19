@@ -1,0 +1,93 @@
+{
+  "gate": "G1",
+  "algo": "RING",
+  "rank": 0,
+  "world_size": 4,
+  "sizes": [
+    1024,
+    16384,
+    65536,
+    262144
+  ],
+  "ok_all": true,
+  "elapsed_total_s": 0.07,
+  "expect_sum_ranks": 6.0,
+  "per_size": {
+    "1024": {
+      "size": 1024,
+      "algo": "RING",
+      "ok": true,
+      "sum_check": true,
+      "elapsed_us": 3656.43,
+      "sample_first": [
+        6.0,
+        6.0,
+        6.0,
+        6.0
+      ],
+      "expect": 6.0,
+      "block_timeouts": 0
+    },
+    "16384": {
+      "size": 16384,
+      "algo": "RING",
+      "ok": true,
+      "sum_check": true,
+      "elapsed_us": 5989.71,
+      "sample_first": [
+        6.0,
+        6.0,
+        6.0,
+        6.0
+      ],
+      "expect": 6.0,
+      "block_timeouts": 0
+    },
+    "65536": {
+      "size": 65536,
+      "algo": "RING",
+      "ok": true,
+      "sum_check": true,
+      "elapsed_us": 4693.3,
+      "sample_first": [
+        6.0,
+        6.0,
+        6.0,
+        6.0
+      ],
+      "expect": 6.0,
+      "block_timeouts": 0
+    },
+    "262144": {
+      "size": 262144,
+      "algo": "RING",
+      "ok": true,
+      "sum_check": true,
+      "elapsed_us": 5013.71,
+      "sample_first": [
+        6.0,
+        6.0,
+        6.0,
+        6.0
+      ],
+      "expect": 6.0,
+      "block_timeouts": 0
+    }
+  },
+  "dq": {
+    "lib_path": "/opt/2hop-s1/proto-lib/libnccl.so.2",
+    "lib_md5": "2f21f6b9dd7b3d31c1d51e2ea047cd4a",
+    "nccl_algo": "RING",
+    "nccl_net": "IB",
+    "nccl_ib_hca": "rocep1s0f0,rocep1s0f1,roceP2p1s0f0,roceP2p1s0f1",
+    "nccl_ib_peer_hca": "1=rocep1s0f1,roceP2p1s0f1;3=rocep1s0f0,roceP2p1s0f0",
+    "nccl_max_nchannels": "16",
+    "nccl_min_nchannels": "4",
+    "nccl_proto": "",
+    "rank": 0,
+    "world_size": 4,
+    "master_addr": "192.168.5.186",
+    "master_port": "27310"
+  },
+  "ts_end_utc": "2026-08-16T18:47:37Z"
+}

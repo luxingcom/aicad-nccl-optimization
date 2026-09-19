@@ -1,0 +1,67 @@
+{
+  "gate": "G3",
+  "note": "ratio_real = 2hop / ring, per round; median across rounds",
+  "rounds": 2,
+  "per_size": {
+    "1024": {
+      "size": 1024,
+      "rounds": {
+        "1": {
+          "ok": false
+        },
+        "2": {
+          "ok": false
+        }
+      },
+      "ratio_real_median": {
+        "p50": null,
+        "p99": null
+      }
+    },
+    "4096": {
+      "size": 4096,
+      "rounds": {
+        "1": {
+          "ok": false
+        },
+        "2": {
+          "ok": false
+        }
+      },
+      "ratio_real_median": {
+        "p50": null,
+        "p99": null
+      }
+    },
+    "16384": {
+      "size": 16384,
+      "rounds": {
+        "1": {
+          "ok": false
+        },
+        "2": {
+          "ok": false
+        }
+      },
+      "ratio_real_median": {
+        "p50": null,
+        "p99": null
+      }
+    },
+    "65536": {
+      "size": 65536,
+      "rounds": {
+        "1": {
+          "ok": false
+        },
+        "2": {
+          "ok": false
+        }
+      },
+      "ratio_real_median": {
+        "p50": null,
+        "p99": null
+      }
+    }
+  }
+}

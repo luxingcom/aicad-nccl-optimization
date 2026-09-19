@@ -1,0 +1,47 @@
+phase=post ts=20260816T181654Z
+--- host dgxspark01
+vllm_containers:
+vllm-tp4-rank0 Up 2 hours (healthy)
+num_requests_running:
+vllm:num_requests_running{engine="0",model_name="deepseek-v4-flash-0731"} 0.0
+gpu_procs:
+163694, 81541 MiB
+365857, 462 MiB
+368110, 284 MiB
+prod_lib_md5:
+2be94172c1172734d00dee9ff7d788bd  /opt/nccl-ringonly/libnccl.so.2.30.7
+--- host dgxspark02
+vllm_containers:
+vllm-tp4-rank1 Up 2 hours (healthy)
+num_requests_running:
+vllm:num_requests_running{engine="0",model_name="deepseek-v4-flash-0731"} 0.0
+gpu_procs:
+2811095, 81543 MiB
+2931009, 462 MiB
+prod_lib_md5:
+2be94172c1172734d00dee9ff7d788bd  /opt/nccl-ringonly/libnccl.so.2.30.7
+--- host dgxspark04
+vllm_containers:
+vllm-tp4-rank2 Up 2 hours (healthy)
+num_requests_running:
+vllm:num_requests_running{engine="0",model_name="deepseek-v4-flash-0731"} 0.0
+gpu_procs:
+3375, 5752 MiB
+2246882, 81541 MiB
+2344863, 462 MiB
+2345621, 284 MiB
+prod_lib_md5:
+2be94172c1172734d00dee9ff7d788bd  /opt/nccl-ringonly/libnccl.so.2.30.7
+--- host dgxspark03
+vllm_containers:
+vllm-tp4-rank3 Up 2 hours (healthy)
+num_requests_running:
+vllm:num_requests_running{engine="0",model_name="deepseek-v4-flash-0731"} 0.0
+gpu_procs:
+38970, 5752 MiB
+2254524, 81541 MiB
+2352382, 462 MiB
+2353165, 284 MiB
+prod_lib_md5:
+2be94172c1172734d00dee9ff7d788bd  /opt/nccl-ringonly/libnccl.so.2.30.7
+--- prod md5 expected: 2be94172

@@ -1,0 +1,27 @@
+{
+  "group": "v2",
+  "endpoint": "http://192.168.5.186:8002/v1",
+  "model": "deepseek-v4-flash-0731",
+  "run_type": "pr",
+  "concurrency": [
+    1,
+    4
+  ],
+  "task_type": "coding,json,prose",
+  "input_len": 512,
+  "output_len": 4096,
+  "prefix_len": "8192,32768",
+  "rounds": 3,
+  "random_seed": 764985668,
+  "engine": "threads",
+  "temperature": 0.6,
+  "ignore_eos_de": true,
+  "cooldown_s": 30.0,
+  "request_timeout_s": 1800.0,
+  "monitor_interval_s": 1.0,
+  "metrics_url": "http://192.168.5.186:8002/metrics",
+  "served_models": [
+    "deepseek-v4-flash-0731"
+  ],
+  "dry_run": false
+}

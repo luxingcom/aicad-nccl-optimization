@@ -1,0 +1,159 @@
+{
+  "group": "v2",
+  "endpoint": "http://192.168.5.186:8002/v1",
+  "model": "deepseek-v4-flash-0731",
+  "engine": "threads",
+  "temperature": 0.6,
+  "rounds": 3,
+  "random_seed": 764985668,
+  "run_type": "pr",
+  "start_ts": "2026-09-04T10:55:23+00:00",
+  "end_ts": "2026-09-04T11:00:58+00:00",
+  "total_elapsed_s": 335.2,
+  "n_tiers": 4,
+  "tiers": [
+    {
+      "mode": "pr",
+      "task_type": null,
+      "prefix_len": 8192,
+      "concurrency": 1,
+      "max_tokens": 1,
+      "start_ts": "2026-09-04T10:55:28+00:00",
+      "end_ts": "2026-09-04T10:55:36+00:00",
+      "elapsed_s": 8.1,
+      "requests_total": 3,
+      "acceptance_rate": 1.0,
+      "pure_running_eq_c": true,
+      "dspark_accept_rate": null,
+      "dspark_per_pos_accept": {
+        "0": null,
+        "1": null,
+        "2": null,
+        "3": null,
+        "4": null,
+        "5": null,
+        "6": null
+      },
+      "dspark_draft_per_request": 0.0,
+      "dspark_counters_start": {
+        "drafts_total": 162.0,
+        "draft_tokens_total": 1134.0,
+        "accepted_tokens_total": 260.0
+      },
+      "dspark_counters_end": {
+        "drafts_total": 162.0,
+        "draft_tokens_total": 1134.0,
+        "accepted_tokens_total": 260.0
+      }
+    },
+    {
+      "mode": "pr",
+      "task_type": null,
+      "prefix_len": 32768,
+      "concurrency": 1,
+      "max_tokens": 1,
+      "start_ts": "2026-09-04T10:56:13+00:00",
+      "end_ts": "2026-09-04T10:56:56+00:00",
+      "elapsed_s": 42.8,
+      "requests_total": 3,
+      "acceptance_rate": 1.0,
+      "pure_running_eq_c": true,
+      "dspark_accept_rate": null,
+      "dspark_per_pos_accept": {
+        "0": null,
+        "1": null,
+        "2": null,
+        "3": null,
+        "4": null,
+        "5": null,
+        "6": null
+      },
+      "dspark_draft_per_request": 0.0,
+      "dspark_counters_start": {
+        "drafts_total": 162.0,
+        "draft_tokens_total": 1134.0,
+        "accepted_tokens_total": 260.0
+      },
+      "dspark_counters_end": {
+        "drafts_total": 162.0,
+        "draft_tokens_total": 1134.0,
+        "accepted_tokens_total": 260.0
+      }
+    },
+    {
+      "mode": "pr",
+      "task_type": null,
+      "prefix_len": 8192,
+      "concurrency": 4,
+      "max_tokens": 1,
+      "start_ts": "2026-09-04T10:57:33+00:00",
+      "end_ts": "2026-09-04T10:58:13+00:00",
+      "elapsed_s": 39.7,
+      "requests_total": 12,
+      "acceptance_rate": 1.0,
+      "pure_running_eq_c": false,
+      "dspark_accept_rate": null,
+      "dspark_per_pos_accept": {
+        "0": null,
+        "1": null,
+        "2": null,
+        "3": null,
+        "4": null,
+        "5": null,
+        "6": null
+      },
+      "dspark_draft_per_request": 0.0,
+      "dspark_counters_start": {
+        "drafts_total": 162.0,
+        "draft_tokens_total": 1134.0,
+        "accepted_tokens_total": 260.0
+      },
+      "dspark_counters_end": {
+        "drafts_total": 162.0,
+        "draft_tokens_total": 1134.0,
+        "accepted_tokens_total": 260.0
+      }
+    },
+    {
+      "mode": "pr",
+      "task_type": null,
+      "prefix_len": 32768,
+      "concurrency": 4,
+      "max_tokens": 1,
+      "start_ts": "2026-09-04T10:58:50+00:00",
+      "end_ts": "2026-09-04T11:00:56+00:00",
+      "elapsed_s": 126.6,
+      "requests_total": 12,
+      "acceptance_rate": 1.0,
+      "pure_running_eq_c": false,
+      "dspark_accept_rate": null,
+      "dspark_per_pos_accept": {
+        "0": null,
+        "1": null,
+        "2": null,
+        "3": null,
+        "4": null,
+        "5": null,
+        "6": null
+      },
+      "dspark_draft_per_request": 0.0,
+      "dspark_counters_start": {
+        "drafts_total": 162.0,
+        "draft_tokens_total": 1134.0,
+        "accepted_tokens_total": 260.0
+      },
+      "dspark_counters_end": {
+        "drafts_total": 162.0,
+        "draft_tokens_total": 1134.0,
+        "accepted_tokens_total": 260.0
+      }
+    }
+  ],
+  "environment": {
+    "served_models": [
+      "deepseek-v4-flash-0731"
+    ],
+    "max_model_len_note": "model/max_model_len 以 /v1/models 为准（见 bench_cfg）",
+    "precheck": null
+  }
+}

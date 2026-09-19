@@ -2,9 +2,10 @@
 
 > **项目**：DGX Spark 四机环网 TP4 vLLM（DeepSeek V4 Flash 0731）NCCL allreduce 延迟优化
 > **团队**：工程保障团队（Archi 架构 / Rex SRE / Tessa QA）
-> **周期**：2026-08-15 ~ 2026-08-17（资料包定版）；**v1.1 组件化（2026-09-19）**
-> **状态**：✅ 生产终态定版（Stage B hardened `2be94172` 已上线），2-hop 实验 D 收尾归档
+> **周期**：2026-08-15 ~ 2026-08-17（资料包定版）；**v1.1 组件化（2026-09-19）**；**v1.2 服务器资料并档（2026-09-19）**
+> **状态**：✅ 生产终态定版（Stage B hardened `2be94172` → **V5-ar2 模块 2026-09-04 晋升生产**，在役 libnccl `51e36db5` + libar2 `343bea89`）；2-hop 实验 S1→S3 完整闭环后机制级否定归档（非未完成）
 > **v1.1 变更**：依据客户部署实录将「资料包」升级为「可部署组件」——新增 v5 可配置补丁（ADR-016，换拓扑免重编库）、部署指南、排障手册、预检/探针/doctor 工具链、deploy 模板；修复 v4 补丁 hunk 行数缺陷与全部补丁 CRLF 问题
+> **v1.2 变更**：服务器取证并档（dgxspark01）——①收录 **V5-ar2 模块**全套（ar2 引擎源码 + hook 补丁 + 文档十九件 + A/B 结果 + md5 血统；2026-09-04 已晋升生产）；②2-hop 执行层增量补齐（10 份报告 + git-bundle 复现包 + lib md5 血统 + S3 门数据 + 失败日志）；③新增 `docs/VERSION-LANDSCAPE.md` 版本链总览与三个 "V5" 语义消歧；④StageB 加固档案（MD5-RECORD + SPCX 劫持验证计划 + stub tuner 源码）
 
 ---
 
@@ -42,17 +43,23 @@
 ```
 github-repo/
 ├── README.md                 # 本文件（项目总览/成果/复现指引）
-├── docs/                     # 全部分析文档（35+19 份，见 docs/README.md 索引）
+├── docs/                     # 全部分析文档（见 docs/README.md 索引）
+│   ├── VERSION-LANDSCAPE.md  # ★ 版本链总览与「V5」消歧（必读入口）
 │   ├── adr/                  # ADR-014 / ADR-015 / ADR-016（含 S1.1-S1.13 决策演进）
 │   ├── deployment/           # ★ 部署指南（DEPLOYMENT-GUIDE.md，步骤化+验证命令）
-│   ├── reports/              # 最终报告 + 各阶段分析/验证/审计 + 2-hop 归档（35 份）
+│   ├── v5-ar2/               # ★ V5-ar2 模块文档（DELIVERY + 十九件，已晋升生产）
+│   ├── 2hop-archive-extras/  # ★ 2-hop 执行层增量报告（10 份 + README）
+│   ├── stageB-hardening/     # ★ StageB 加固档案（MD5-RECORD + SPCX 验证计划）
+│   ├── reports/              # 最终报告 + 各阶段分析/验证/审计 + 2-hop 归档
 │   ├── benchmarks/           # 最终性能基线 v3 + v2 基准协议（10 份）
-│   └── ops/                  # 部署/自恢复/治理/审计（19 份）＋★ troubleshooting-playbook.md
-├── patches/                  # NCCL 定制补丁（v5 可配置版领衔）+ 2-hop 归档补丁
+│   └── ops/                  # 部署/自恢复/治理/审计 ＋★ troubleshooting-playbook.md
+├── patches/                  # NCCL 定制补丁（v5 可配置版 + V5-ar2 hook）+ 2-hop 归档补丁与脚本
 ├── config/                   # 环境参数基线（NCCL env / daemon.json / systemd / healthcheck）
 ├── deploy/                   # ★ 部署组件模板（netplan / systemd / env / 验收清单）
-├── src/                      # tuner 插件源码 + 2-hop 实验脚本（轻量参考，不含二进制）
-└── tools/                    # 运维/测试/部署工具链（precheck / probe / doctor / gen_devmap …）
+├── src/                      # tuner 插件源码 + ★ ar2 引擎源码（V5-ar2）+ spcx stub tuner
+├── archive/2hop-proto/       # ★ 2-hop 复现包（git-bundle + SHA 映射 + lib md5 血统 + 门数据 + 失败日志）
+├── results/v5-ab-window/     # ★ V5-ar2 同窗 A/B 结果（PR 20 档 + DE 12 档）
+└── tools/                    # 部署工具链（precheck / probe / doctor / gen_devmap）+ ar2 工具
 ```
 
 **快速入口**
@@ -60,6 +67,9 @@ github-repo/
 |---|---|
 | **我要部署** | `docs/deployment/DEPLOYMENT-GUIDE.md` ★ |
 | **出问题怎么查** | `docs/ops/troubleshooting-playbook.md` ★ |
+| **版本链 / 三个 V5 是什么** | `docs/VERSION-LANDSCAPE.md` ★ |
+| **V5-ar2 模块（生产在役）** | `docs/v5-ar2/DELIVERY.md` |
+| **2-hop 完整闭环** | `docs/reports/2hop-s3-final-adjudication-2026-08-17.md` + `docs/2hop-archive-extras/` + `archive/2hop-proto/` |
 | 整体结论 | `docs/reports/00-FINAL-REPORT-nccl-optimization-2026-08-16.md` |
 | 性能基线数据 | `docs/benchmarks/00-FINAL-BASELINE-v3-2026-08-17.md` |
 | 为什么这么做 | `docs/adr/ADR-014-*.md` + `ADR-015-*.md` + `ADR-016-*.md` |
@@ -79,7 +89,7 @@ github-repo/
 4. **双分支加固**：override 在 tuner 存在/不存在两分支均生效，防外部 tuner（SPCX）劫持静默失效；
 5. **P1 自愈治理**：systemd 自愈 + healthcheck 主动重建 + 日志/密钥/镜像治理，整机重启 ≈7min 达标。
 
-**2-hop 实验结论**：bilateral 双 Primitives 在当前 NCCL ring 原语框架内被干净否定（SIMPLE 下 illegal memory access；LL/LL128 价值区不可触及），项目 D 收尾归档，预算转投 P2 交换机 / 0.27 升级。
+**2-hop 实验结论**：项目 S1→S2→S3 **完整开发并闭环**（非未完成）——P0 根因闭环（device kernel table 未注册 2HOP + nAlgos 溢出，lib `d3fc78a4` 修复后 ok=True）、随后机制级否定（SIMPLE 双 Primitives 在 form C 与 carry 两套设计下同样 illegal memory access；LL/LL128 价值区编译期隔离不可触及），D 收尾归档。完整执行层证据：`docs/2hop-archive-extras/` + `archive/2hop-proto/`（git-bundle 可复现）。
 
 ---
 
@@ -101,6 +111,14 @@ git apply ../patches/stageB-hardened-two-branch.patch
 make -j src.build CUDA_HOME=/usr/local/cuda \
   NVCC_GENCODE=-gencode=arch=compute_121,code=sm_121
 # 部署：四机同 md5 安装为 /opt/nccl-ringonly/libnccl.so.2；md5 同步登记 config/production-nccl-env.md §3
+```
+
+### 4.2b V5-ar2 模块重建（hook 集成形态，已在生产）
+```bash
+# 基座：上一步 hardened 库（或服务器 git 0dd44cd 树 ~/sparkring-kit/nccl-ringonly-v5/）
+git apply ../patches/nccl-ringonly-v5-hook.patch
+# 另需 ar2 引擎：源码 src/ar2-engine/（CMake 构建 → libar2.so.1）
+# 构建与验收流程：docs/v5-ar2/BUILD-TEST.md；回滚：env AR2_V5=0 一键全原生
 ```
 
 ### 4.3 跑基准（32 档）
@@ -125,7 +143,7 @@ bash tools/healthcheck.sh --role head   # 只读探针
 | 引擎 | vLLM TP4 · max-num-seqs **12** · util **0.80** · Prefix KV · **600k** · capture **96** · bt **4096** |
 | 投机 | dspark **k=7** 静态（无 ladder）；接受率 0.94/0.86/0.77/0.69/0.61/0.49/0.35 平滑衰减 |
 | ulimit | nofile **1048576**（8/18 由默认 1024 上调） |
-| NCCL | ring-only 2.30.7 hardened **2be94172**；ALGO=RING；MIN_CH4/**MAX_CH4（B1：16→4，2026-08-17）**/BUFFSIZE 8M |
+| NCCL | ring-only 2.30.7 hardened `2be94172`（08-16 锚点）→ **V5-ar2 hook 晋升后容器内在役 libnccl `51e36db5` + libar2 `343bea89`（09-04 起，详见 docs/v5-ar2/DELIVERY.md）**；ALGO=RING；MIN_CH4/**MAX_CH4（B1：16→4，2026-08-17）**/BUFFSIZE 8M |
 | tuner | `NCCL_TUNER_THRESHOLD=40960`（≤40KB→LL />40KB→Simple）+ `NCCL_NET_PLUGIN=none` |
 | IB | HCA 4 口；GID=3；MERGE_NICS=0；TOS=46；硬编码 per-peer 映射 |
 | systemd | Restart=always；StartLimit 1800s/20；healthcheck timer 60s |

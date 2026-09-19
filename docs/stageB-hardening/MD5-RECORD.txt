@@ -1,0 +1,36 @@
+NCCL 2.30.7 ring-only Stage B hardened (dual-branch) archive record
+date: 2026-08-16
+git HEAD: 0dd44cd (PerSizeTuner dual-branch hardening)
+branch: nccl-2307-hardened
+tags: nccl-2307-stageB-hardened (0dd44cd)
+
+build env: anemll/dspark-vllm-gx10:0.2.1-v026.0 (glibc 2.35, CUDA 13.0)
+build cmd: make -j src.build CUDA_HOME=/usr/local/cuda NVCC_GENCODE=-gencode=arch=compute_121,code=sm_121
+build dir cleaned via sudo rm -rf build before compile
+
+lib md5:
+  StageB hardened   build/lib/libnccl.so.2.30.7 = 2be94172c1172734d00dee9ff7d788bd  GLIBC_MAX=2.34  LIB_LOAD_OK (anemll img)
+  (prev glibcfix)   build/lib/libnccl.so.2.30.7 = 3d9cf539d2ed269ccaa49a46a98d7eb0  GLIBC_MAX=2.34
+
+change vs stageB-glibcfix (3d9cf539):
+  - extract per-size LL/Simple override into ncclPersizeTunerOverride() (static, enqueue.cc)
+  - apply in BOTH tuner branches: if (comm->tuner != NULL, SPCX present) after getCollInfo,
+    and else (tuner == NULL) before topoGetAlgoInfo (else behavior unchanged)
+  - removes implicit dependency on NCCL_NET_PLUGIN=none (no more silent per-size failure
+    if an external/SPCX tuner gets loaded in the future)
+  - constraints preserved: allreduce only, skip IGNORE(-1.0) combos, no nChannels touch
+
+patches: patches/v1-ring-only.patch, patches/v4-netdev-hardcode.patch,
+         patches/stageB-tuner-two-band.patch, patches/stageB-hardened-two-branch.patch
+
+verification status:
+  - GLIBC_MAX = 2.34 (constraint <=2.34)                          PASS
+  - anemll image LD_PRELOAD + ctypes load (LIB_LOAD_OK)           PASS
+  - ncclGetVersion symbol present                                  PASS
+  - four-node A/B bench + SPCX-hijack scenario                    PENDING (production window;
+    see SPCX_验证计划.md; stub tuner source: spcx_stub_tuner.c)
+
+test artifacts (this dir):
+  spcx_stub_tuner.c      stub tuner exporting ncclTunerPlugin_v6 (simulates SPCX hijack;
+                         deliberately conflicts with per-size policy to prove hardening)
+  SPCX_验证计划.md         window-time verification plan (baseline / SPCX-hijack / control)

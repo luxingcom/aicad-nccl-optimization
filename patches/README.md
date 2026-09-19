@@ -13,8 +13,9 @@
 | **v5 可配置 per-peer 映射** | `v5-netdev-configurable.patch` | `src/transport/net.cc`：内建默认表（=v4 生产表）+ `NCCL_RING_DEV_MAP`/`NCCL_RING_DEV_MAP_FILE` 运行期覆盖；非法配置 WARN+回退默认表。换拓扑免重编库 | ADR-016（2026-09-19） | NCCL 2.30.7 | 🧪 新增（真机编译/四机验证待维护窗口） |
 | **Stage B tuner（双带）** | `stageB-tuner-two-band.patch` | `src/enqueue.cc`：per-size tuner（≤40KB→LL / >40KB→Simple，仅 allreduce） | ADR-014 / S1.11 | NCCL 2.30.7 | ✅ 已上线（3d9cf539） |
 | **Stage B 双分支加固** | `stageB-hardened-two-branch.patch` | 提取 override 为 `ncclPersizeTunerOverride()`，在 tuner!=NULL / tuner==NULL 双分支均生效，防 SPCX 外部 tuner 劫持静默失效 | ADR-014 / S1.12 | NCCL 2.30.7 | ✅ 已上线（**生产 2be94172**） |
-| **2-hop proto host plumbing** | `2hop-proto-host-plumbing.patch` | `tuning.cc`/`tuner_v5.h`/`device.h` 等：2HOP 算法注册与常量（**实验性质，已 D 收尾归档**） | S1.13 / 2-hop 终审 | NCCL 2.30.7（2hop-proto 分支） | ⛔ 归档（否定结论） |
-| **2-hop proto kernel** | `2hop-proto-kernel.patch` | `src/device/all_reduce.h` 等：2HOP kernel 实现（bilateral，**实验性质**） | S1.13 / 2-hop 终审 | NCCL 2.30.7（2hop-proto 分支） | ⛔ 归档（否定结论） |
+| **2-hop proto host plumbing** | `2hop-proto-host-plumbing.patch` | `tuning.cc`/`tuner_v5.h`/`device.h` 等：2HOP 算法注册与常量（实验性质，D 收尾归档） | S1.13 / 2-hop 终审 | NCCL 2.30.7（2hop-proto 分支） | ⛔ 归档（机制级否定，闭环完整） |
+| **2-hop proto kernel** | `2hop-proto-kernel.patch` | `src/device/all_reduce.h` 等：2HOP kernel 实现（bilateral，实验性质） | S1.13 / 2-hop 终审 | NCCL 2.30.7（2hop-proto 分支） | ⛔ 归档（机制级否定，闭环完整） |
+| **V5-ar2 hook**（ringonly V5 模块） | `nccl-ringonly-v5-hook.patch` | `src/collectives.cc` 等：按尺寸将小消息 allreduce 分发到 ar2 引擎（fence-arm 启动安全 + 优雅降级 + `AR2_V5=0` 回滚）；256 行，基于 hardened 2307（git 0dd44cd）。**与 v5-netdev 补丁语义无关**（消歧见 docs/VERSION-LANDSCAPE.md） | V5-ar2 定版（2026-09-04，生产 digest `81a0c910`） | hardened NCCL 2.30.7 + libar2 | ✅ **已晋升生产**（在役 libnccl `51e36db5` + libar2 `343bea89`） |
 
 > ⚠️ **2026-09-19 修订**：v4 补丁第 4 个 hunk 的行数声明（`+382,7`）与实际行数不符（尾部幻影空行），`git apply` 可能因 hunk 漂移失败——已在本次修订清理为规范 LF 格式并通过 hunk 自洽校验。v5 补丁由官方 2.30.7-1 原件真实 diff 生成并做了往返逐字节验证。
 > ⚠️ **行尾纪律**：所有 `.patch` 必须为 **LF** 行尾（本仓库 `.gitattributes` 已强制 `*.patch text eol=lf`）。经 Windows/其他渠道传输后若 `git apply` 报 phantom context 错误，先 `dos2unix patches/*.patch`。
@@ -59,8 +60,10 @@ python3 patches/apply_2hop_patch.py --help
 |---|---|
 | v1/v4 / StageB | `docs/adr/ADR-015-ringonly-netdev-hardcode-S1-S1.13.md`、`docs/adr/ADR-014-per-size-protocol-internal-tuning-vs-plugin.md` |
 | **v5（可配置）** | `docs/adr/ADR-016-ring-devmap-runtime-configurable-v5.md`；工具链 `tools/gen_devmap.py` / `tools/probe_ring_topology.sh` |
-| StageB tuner | `docs/reports/00-FINAL-REPORT-nccl-optimization-2026-08-16.md` §3 |
-| 2-hop | `docs/reports/2hop-s3-final-adjudication-2026-08-17.md`、`docs/reports/2hop-archive-manifest-v1-2026-08-17.md` |
+| StageB tuner | `docs/reports/00-FINAL-REPORT-nccl-optimization-2026-08-16.md` §3；加固档案 `docs/stageB-hardening/`（MD5-RECORD + SPCX 劫持验证计划 + stub tuner 源码） |
+| 2-hop | `docs/reports/2hop-s3-final-adjudication-2026-08-17.md`、`docs/reports/2hop-archive-manifest-v1-2026-08-17.md`；执行层增量 `docs/2hop-archive-extras/`；复现 bundle `archive/2hop-proto/` |
+| **V5-ar2 hook** | `docs/v5-ar2/`（DELIVERY.md 入口 + 文档十九件 + md5 血统 `V5-MD5-RECORD.txt`）；引擎源码 `src/ar2-engine/`；A/B 结果 `results/v5-ab-window/` |
+| 版本链总览/消歧 | `docs/VERSION-LANDSCAPE.md`（三个 "V5" 语义 + ringonly 全版本链，必读） |
 
 ## 5. 重建指引（不含编译产物）
 
@@ -81,5 +84,8 @@ make -j src.build CUDA_HOME=/usr/local/cuda \
 
 - 生产基线源码 + 补丁：`/opt/aicad-prod/backup/nccl-official-2307-hardened-20260816/`（patches/ 目录）
 - StageB（pre-hardened）：`/opt/aicad-prod/backup/nccl-official-2307-stageB-20260816/`
-- 2-hop 归档：`/opt/aicad-prod/backup/nccl-2hop-proto-archive-20260817/`
+- 2-hop 归档：`/opt/aicad-prod/backup/nccl-2hop-proto-archive-20260817/`（本仓库已收录 reports/patches/bundle/MD5 全量）
+- V5-ar2 交付包：`~/sparkring-kit/ringonlyV5/`（01 节点；本仓库已收录源码/文档/补丁/A-B 结果）
+- hardened 源码树（V5 hook 基座，git 0dd44cd）：`~/sparkring-kit/nccl-ringonly-v5/`（01 节点）
+- V5 生产库（四机一致）：`~/v5libs/`（libnccl `51e36db5` + libar2 `343bea89`）
 - 生产库 md5 记录：`/opt/nccl-ringonly/MD5-RECORD.txt`（服务器）

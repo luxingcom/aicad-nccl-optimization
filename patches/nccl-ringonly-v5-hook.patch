@@ -1,0 +1,281 @@
+diff --git a/src/collectives.cc b/src/collectives.cc
+index 6ba66c9..fae89ce 100644
+--- a/src/collectives.cc
++++ b/src/collectives.cc
+@@ -11,6 +11,211 @@
+ #include "nccl.h"
+ #include "nvtx_payload_schemas.h"
+ 
++/* ===================== NCCL ringonly V5: 小消息 allreduce 按尺寸分发到 ar2 =====================
++ * 工程债与设计记录 (2026-09-04 V5 创建; 改动前必读):
++ * 分发条件 (缺一即回落 NCCL 原生路径, 零行为差异):
++ *   ① env AR2_PEERS 已配置 (未配置 = 整特性关闭, 零侵入默认); AR2_V5=0 显式一键关闭(回滚开关)
++ *   ② comm 有效且 nRanks==4 (ar2 协议几何 round0=rank^1 / round1=rank^3)
++ *   ③ op==ncclSum && datatype==ncclBfloat16 (ar2 v1 仅 bf16 就地求和)
++ *   ④ sendbuff==recvbuff (仅就地; torch all_reduce 同张量即就地)
++ *   ⑤ bytes=count*2 ∈ [16, 交叉点] 且 16 对齐; buf 指针 16 对齐 (kernel __ldcv 硬约束)
++ *      交叉点 env AR2_CROSSOVER_B 默认 8192 —— 2026-09-04 四机实测定界:
++ *      ≤8KB ar2 领先 9~43% / 12KB 持平 / 16KB 落后 11% (改前须复测, 见 ringonlyV5/docs)
++ *   ⑥ group 规则 v3: 独立调用 (depth==0) 恒可分发; 组内 (depth>=1) 仅首发 (ops==0)
++ *   ⑦ stream 处于 CUDA graph 捕获态时回落原生 (ar2 = CPU 投递 WR + host 阻塞, 与捕获/重放不兼容)
++ *   ⑧ 启动安全锁存: 见过捕获事件前不分发; 捕获后首个大 AR 为全 rank 一致触发点, 经
++ *      ar2_arm_fence 四 rank 栅栏武装后方激活 (vLLM 启动期 warmup/capture 相位错位根治);
++ *      AR2_V5_EAGER=1 = 逃生门 (无图测试负载立即分发)
++ * 流语义: kernel 落调用方 stream (ar2_allreduce_stream) ⇒ 输入就绪/输出可见由流序保证;
++ *   engine host 阻塞至完成 —— 与 NCCL 异步入队契约不同, 仅限关键路径小消息 (V5 定位).
++ * 生命周期: libar2.so.1 懒 dlopen + ar2_init_env 一次 (首调用秒级建连);
++ *   ar2_comm 进程存续期不销毁 (leak-by-design: 规避 NCCL comm 销毁次序耦合).
++ * 失败语义: 加载/init 失败 → 永久禁用 + 一次 stderr 告警, 本次及后续走原生 (安全降级);
++ *   op 执行失败 (相位错位残余等) → 永久禁用 + 本 op 原生重做 (用户缓冲区未被污染:
++ *   M1 最终写回在两轮完成后才 launch) —— 绝不抛错击穿调用方 (E2E #1 教训).
++ * 线程模型: 与 ar2 engine 契约一致, 假设集合调用单线程.
++ */
++#include <dlfcn.h>
++#include <stdint.h>
++#include <chrono>
++#include <cuda_runtime_api.h>   /* cudaStreamIsCapturing — V5 分发条件⑦ (graph 捕获守卫) */
++static int64_t v5NowMs() {   /* monotonic 毫秒 — 捕获静默窗判据 */
++  return std::chrono::duration_cast<std::chrono::milliseconds>(
++             std::chrono::steady_clock::now().time_since_epoch()).count();
++}
++
++int ncclV5GroupDepth = 0;   /* group.cc 的 ncclGroupStart/End 维护 */
++/* 工程债修复 (V5 实测#1, 规则已迭代至 v3): v1 "group 内一律拒" 拦掉 100% 调用 (c10d 包组);
++ * v2 "depth<=1 且组内首发" 仍误拦 (torch 实测不开 group, ops 计数永不清零 → dispatched=1)。
++ * v3 终态: 独立调用 (depth==0) 恒可分发 —— ar2 host 阻塞至完成, 流序天然安全;
++ * 组内 (depth>=1) 仅首发 (ncclV5GroupOps==0, GroupStart 清零, 入口与 EnqueueCheck 递增)。 */
++int ncclV5GroupOps = 0;
++
++typedef int (*v5_init_fn)(int, int, void**);
++typedef int (*v5_ar_fn)(void*, void*, unsigned, void*);
++typedef int (*v5_fence_fn)(void*);
++static void* g_v5Comm = nullptr;
++static v5_ar_fn g_v5Ar = nullptr;
++static v5_fence_fn g_v5Fence = nullptr;
++static bool g_v5Disabled = false;
++/* ---- 启动安全锁存 (V5 实测#5, E2E #1/#2 定谳后设计) ----
++ * 启动期 dspark warmup(eager)与 capture(录制)跨 rank 相位错位, 任何本地判据都无法
++ * 区分 → 锁存三态: 捕获见过(v5SawCapture) → 等 "捕获后首个大 AR" 触发点 → 四 rank
++ * 控制面栅栏(ar2_arm_fence) → 武装(v5Armed)后才开始分发。触发 op 选 >crossover 的大
++ * AR: 它必然全 rank 同逻辑到达 (TP 集合), 且自身恒走原生, 栅栏阻塞无数据面风险。
++ * 栅栏失败(错位超 10s 等) → v5ArmDead 永久放弃, 全原生 (错误方向=安全方向)。
++ * AR2_V5_EAGER=1 退回立即分发 (仅限无 CUDA graph 的测试负载, 如 bench_coll)。 */
++static int v5SawCapture = 0;
++static int v5Armed = 0;
++static int v5ArmDead = 0;
++static int64_t v5LastCaptureMs = 0;   /* 最近捕获事件时刻 (monotonic ms) — 静默窗判据 */
++static unsigned g_v5Crossover = 0;      /* 0 = 未读 env */
++static unsigned long g_v5Dispatched = 0;   /* 实际走 ar2 的 op 数 (atexit 打印 — 分发判定件) */
++static unsigned long g_v5Failed = 0;       /* ar2 op 失败 (相位错位等) → 降级原生 的次数 */
++/* V5-HISTO (AR2_V5_HISTOGRAM=1): 全量 AR 按 log2 尺寸桶累计 —— 捕获期(录制进 graph,
++ * hook 不可达人群) 与 武装后 eager(可分发人群) 分开统计。OPEN-ISSUES #10 (捕获期集成)
++ * 可行性的一手输入: 稳态收益上限 = 捕获期 ≤crossover 人群 × 微基准收益。零行为影响,
++ * kill 开关下亦可普查。 */
++static unsigned long g_v5HistCap[32] = {0};
++static unsigned long g_v5HistEager[32] = {0};
++#include <cstdlib>
++static void v5HistoDump(const char *phase, const unsigned long *h) {
++  fprintf(stderr, "[NCCL][V5] histo %s:", phase);
++  for (int i = 0; i < 32; i++)
++    if (h[i]) fprintf(stderr, " %u-%uB:%lu", 1u << (i > 0 ? i - 1 : 0), (1u << i) - 1, h[i]);
++  fprintf(stderr, "\n");
++}
++static void v5Atexit(void) {
++  fprintf(stderr, "[NCCL][V5] exit: dispatched=%lu ops to ar2 (failed=%lu degraded, crossover=%u)\n",
++          g_v5Dispatched, g_v5Failed, g_v5Crossover);
++  if (getenv("AR2_V5_HISTOGRAM") && getenv("AR2_V5_HISTOGRAM")[0] == '1') {
++    v5HistoDump("capture-phase", g_v5HistCap);
++    v5HistoDump("armed-eager", g_v5HistEager);
++  }
++}
++
++static bool ncclV5TryAr2(const void* sendbuff, void* recvbuff, size_t count, ncclDataType_t datatype,
++                         ncclRedOp_t op, ncclComm* comm, cudaStream_t stream, ncclResult_t* res) {
++  *res = ncclSuccess;
++  {  /* V5-HISTO 普查 (先于一切早退, kill 开关下也计): 捕获期 vs 武装后 eager 分桶 */
++    static int v5Histo = -1;
++    if (v5Histo < 0) {
++      const char* h = getenv("AR2_V5_HISTOGRAM");
++      v5Histo = (h && h[0] == '1') ? 1 : 0;
++    }
++    if (v5Histo) {
++      cudaStreamCaptureStatus cst = cudaStreamCaptureStatusNone;
++      (void)cudaStreamIsCapturing(stream, &cst);
++      size_t bts = count * ncclTypeSize(datatype);
++      unsigned bkt = bts ? (unsigned)(63 - __builtin_clzll((unsigned long long)bts)) : 0;
++      if (bkt > 31) bkt = 31;
++      if (cst != cudaStreamCaptureStatusNone) g_v5HistCap[bkt]++;
++      else if (v5Armed) {
++        g_v5HistEager[bkt]++;
++        /* 周期打印 eager 人口 (#10 关键判据: 区分 "decode AR 在图内" vs "eager 但
++         * >crossover 大尺寸" —— 两者导向完全不同的集成路线); 计数取模免独立计数器 */
++        static unsigned long v5EagerSeen = 0;
++        if ((++v5EagerSeen & 0x3FFF) == 0) v5HistoDump("armed-eager(snap)", g_v5HistEager);
++      }
++    }
++  }
++  if (g_v5Disabled) return false;
++  const char* e = getenv("AR2_V5");
++  if (e && e[0] == '0' && e[1] == '\0') return false;   /* 显式关闭 */
++  if (!g_v5Comm) {
++    if (getenv("AR2_PEERS") == nullptr) return false;    /* 未配置 = 特性关闭 */
++    void* lib = dlopen("libar2.so.1", RTLD_NOW | RTLD_GLOBAL);
++    if (!lib) { g_v5Disabled = true; fprintf(stderr, "[NCCL][V5] libar2 load fail: %s\n", dlerror()); return false; }
++    v5_init_fn ini = (v5_init_fn)dlsym(lib, "ar2_init_env");
++    g_v5Ar = (v5_ar_fn)dlsym(lib, "ar2_allreduce_stream");
++    g_v5Fence = (v5_fence_fn)dlsym(lib, "ar2_arm_fence");
++    if (!ini || !g_v5Ar || !g_v5Fence) { g_v5Disabled = true; fprintf(stderr, "[NCCL][V5] libar2 symbols missing\n"); return false; }
++    void* c = nullptr;
++    int rc = ini(comm ? comm->rank : -1, comm ? comm->nRanks : 0, &c);
++    if (rc != 0 || !c) { g_v5Disabled = true; fprintf(stderr, "[NCCL][V5] ar2_init rc=%d disable dispatch\n", rc); return false; }
++    g_v5Comm = c;
++    const char* xo = getenv("AR2_CROSSOVER_B");
++    g_v5Crossover = xo ? (unsigned)atoi(xo) : 8192u;
++    if (g_v5Crossover > 65536u) g_v5Crossover = 65536u;   /* 审计A5-ii: 钳到 AR2_SMAX 默认
++      * 之上会让首个超 smax 的 op 以 INVALID 误判为会话失败 (降级虽安全但反直觉) */
++    fprintf(stderr, "[NCCL][V5] ar2 enabled: rank=%d crossover=%uB (small->ar2, else NCCL ring)\n",
++            comm ? comm->rank : -1, g_v5Crossover);
++  }
++  {  /* 首拒诊断 (一次性): 定位拦截条件 — 工程债排查件, 保留 */
++    static bool v5Diag = false;
++    if (!v5Diag) {
++      v5Diag = true;
++      fprintf(stderr, "[NCCL][V5] first-op check: op=%d dt=%d in_place=%d comm=%p nRanks=%d bytes=%zu xo=%u depth=%d ops=%d\n",
++              (int)op, (int)datatype, (int)(sendbuff == recvbuff), (void*)comm,
++              comm ? comm->nRanks : -1, count * 2, g_v5Crossover, ncclV5GroupDepth, ncclV5GroupOps);
++    }
++  }
++  size_t bytes = count * 2;
++  /* 条件⑦ + 捕获锁存: 捕获流只录不执行 (ar2 host 阻塞必超时), 且 WR 投递是 CPU 侧
++   * verbs 动作录不进 graph —— 捕获期 (含查询失败, 保守) 一律回落原生并置锁存。 */
++  cudaStreamCaptureStatus capSt = cudaStreamCaptureStatusActive;
++  (void)cudaStreamIsCapturing(stream, &capSt);
++  if (capSt != cudaStreamCaptureStatusNone) { v5SawCapture = 1; v5LastCaptureMs = v5NowMs(); return false; }
++  /* 启动安全锁存主逻辑 (见顶部 v5SawCapture 声明处注释)。AR2_V5_EAGER=1 = 逃生门:
++   * 无 CUDA graph 的测试负载 (bench_coll 等) 立即分发, 绕过锁存/栅栏。 */
++  static bool v5EagerMode = []{ const char* e = getenv("AR2_V5_EAGER"); return e && e[0] == '1'; }();
++  if (!v5EagerMode && !v5Armed) {
++    /* pre-arm 诊断 (V5 实测#7): 服务期触发链取证 — 每 8192 个经过 hook 的 op 报一次
++     * 锁存状态, 区分 "AR 未达 hook / SawCapture 未锁存 / 静默窗未满 / 触发未发生" */
++    static unsigned long v5PreArmSeen = 0;
++    if ((++v5PreArmSeen & 0x1FFF) == 0)
++      fprintf(stderr, "[NCCL][V5] pre-arm: hookops=%lu sawCap=%d quiet=%ldms lastB=%zu\n",
++              v5PreArmSeen, v5SawCapture, (long)(v5NowMs() - v5LastCaptureMs), bytes);
++    if (v5ArmDead || !v5SawCapture || bytes <= g_v5Crossover) return false;
++    /* 捕获静默窗 (V5 实测#6, V5 生产镜像首启失败定谳): vLLM 启动捕获分三段
++     * (目标 PIECEWISE → FULL → dspark), 段间隔实测 ≤5s, 且 PIECEWISE 片间有大量
++     * eager 大 AR (262-512KB ×87) —— 仅凭 "捕获后首个大 AR" 触发会在 PIECEWISE 1/16
++     * 处过早武装, dspark warmup 相位错位 → 降级重做遇 "对端 op 已录进 graph 延迟执行"
++     * → 原生 op 永等 → 30min watchdog。要求距最近捕获事件 ≥10s (远大于段间隔、
++     * 远小于末段捕获到首个服务请求的间隔) 才允许触发。 */
++    if (v5NowMs() - v5LastCaptureMs < 10000) return false;
++    int frc = g_v5Fence(g_v5Comm);   /* 触发点: 静默窗外首个大 AR (全 rank 同逻辑) */
++    if (frc == 0) {
++      v5Armed = 1;
++      fprintf(stderr, "[NCCL][V5] armed via fence (post-capture large-AR trigger): dispatch active\n");
++      { const char* h = getenv("AR2_V5_HISTOGRAM");
++        if (h && h[0] == '1') v5HistoDump("capture-phase", g_v5HistCap); }   /* 捕获期人群到此定格 */
++    } else {
++      v5ArmDead = 1;
++      fprintf(stderr, "[NCCL][V5] fence rc=%d - arm abandoned, permanent native fallback\n", frc);
++    }
++    return false;   /* 触发 op 自身恒走原生 */
++  }
++  if (op != ncclSum || datatype != ncclBfloat16) return false;
++  if (sendbuff != recvbuff || recvbuff == nullptr) return false;
++  if (comm == nullptr || comm->nRanks != 4) return false;
++  if (bytes < 16 || bytes > g_v5Crossover || (bytes & 15) || ((uintptr_t)recvbuff & 15)) return false;
++  /* 工程债修复 (V5 实测#2): torch/c10d 在此路径不开 group (depth 恒 0) —— 原 "ops!=0 即拒"
++   * 会让第 2 个 op 起全部回落 (实测 dispatched=1)。正确规则: 独立调用 (depth==0) 恒可分发
++   * (ar2 host 阻塞至完成, 流序天然安全); 组内 (depth>=1) 仅允许组内首发 (ops==0)。 */
++  if (ncclV5GroupDepth >= 1 && ncclV5GroupOps != 0) return false;
++  g_v5Dispatched++;
++  if ((g_v5Dispatched & 0xFFFF) == 0)   /* 长跑可见性: 每 65536 op 报点 */
++    fprintf(stderr, "[NCCL][V5] progress: dispatched=%lu\n", g_v5Dispatched);
++  static bool v5AtexitOnce = (atexit(v5Atexit) == 0);   /* 计数判定件: 退出时打印 */ (void)v5AtexitOnce;
++  int rc = g_v5Ar(g_v5Comm, recvbuff, (unsigned)bytes, (void*)stream);
++  if (rc != 0) {
++    /* 优雅降级 (V5 实测#4, E2E 定谳): 失败根因 = 跨 rank 相位错位 —— 对端把同一逻辑 op
++     * 提前走了原生或录进了 graph (vLLM 启动期 warmup/capture 相位在各 rank 间无全局栅栏,
++     * dspark 捕获窗口实测复现), 本端 ar2 门铃永不到 → 5s 超时, 引擎 poison (seq 两端发散)。
++     * 本 op 可安全原生重做: M1 的 slot→buf 最终写回在两轮交换完成后才 launch, 超时 ⇒ 未到
++     * 写回 ⇒ 用户缓冲区仍持原值; 对端原生 op 挂起等本端加入, 原生重跑即汇合补齐。
++     * 处置: 永久禁用 V5 + handled=false → 调用方走原生路径。绝不抛 ncclInternalError
++     * (首版语义) —— 那会直接击穿 vLLM 启动链 (E2E #1 实测崩)。 */
++    fprintf(stderr, "[NCCL][V5] ar2 op rc=%d - degrade: V5 disabled permanently, op re-runs natively\n", rc);
++    g_v5Disabled = true;
++    g_v5Failed++;
++    return false;
++  }
++  return true;   /* 成功处理 */
++}
++
++
+ const char* ncclFuncToString(ncclFunc_t fn) {
+   switch (fn) {
+   case ncclFuncAllGather:
+@@ -167,6 +372,12 @@ NCCL_API(ncclResult_t, ncclAllReduce, const void* sendbuff, void* recvbuff, size
+          ncclRedOp_t op, ncclComm* comm, cudaStream_t stream);
+ ncclResult_t ncclAllReduce(const void* sendbuff, void* recvbuff, size_t count, ncclDataType_t datatype, ncclRedOp_t op,
+                            ncclComm* comm, cudaStream_t stream) {
++  {  /* NCCL ringonly V5: 条件满足则整 op 交给 ar2 (含错误), 否则无痕回落原生路径 */
++    ncclResult_t v5;
++    bool handled = ncclV5TryAr2(sendbuff, recvbuff, count, datatype, op, comm, stream, &v5);
++    ncclV5GroupOps++;   /* 本 group 已含一个集合 (无论走向), 后续集合不再分发 */
++    if (handled) return v5;
++  }
+   NVTX3_FUNC_WITH_PARAMS(AllReduce, NcclNvtxParamsAllReduce,
+                          NVTX3_PAYLOAD(comm ? comm->commHash : 0, count * ncclTypeSize(datatype), op));
+ 
+diff --git a/src/enqueue.cc b/src/enqueue.cc
+index fecfbea..66b498b 100644
+--- a/src/enqueue.cc
++++ b/src/enqueue.cc
+@@ -3170,6 +3170,7 @@ static ncclResult_t taskAppend(struct ncclComm* comm, struct ncclInfo* info) {
+ }
+ 
+ ncclResult_t ncclEnqueueCheck(struct ncclInfo* info) {
++  { extern int ncclV5GroupOps; ncclV5GroupOps++; }   /* NCCL ringonly V5: 组内集合计数 */
+   // Early-out on invalid or revoked communicator
+   ncclResult_t ret = CommCheck(info->comm, info->opName, "comm");
+   if (ret != ncclSuccess) return ncclGroupErrCheck(ret);
+diff --git a/src/group.cc b/src/group.cc
+index 56d29c3..db77986 100644
+--- a/src/group.cc
++++ b/src/group.cc
+@@ -5,6 +5,7 @@
+  * See LICENSE.txt for more license information
+  *************************************************************************/
+ 
++extern int ncclV5GroupDepth;   /* NCCL ringonly V5 */
+ #include "group.h"
+ #include "debug.h"
+ #include "enqueue.h"
+@@ -99,6 +100,9 @@ ncclResult_t ncclGroupStart() {
+   NCCL_NVTX3_FUNC_RANGE;
+ 
+   NCCLCHECK(ncclGroupStartInternal());
++  ncclV5GroupDepth++;   /* NCCL ringonly V5 — 内部调用成功后才计数 (审计B6-W2 修复:
++                         * 先加后查会让失败路径 depth 永久悬高, 组内分发被永久关闭) */
++  { extern int ncclV5GroupOps; ncclV5GroupOps = 0; }   /* 新 group: 集合计数清零 */
+   TRACE_CALL("ncclGroupStart()");
+   return ret;
+ }
+@@ -107,6 +111,7 @@ NCCL_API(ncclResult_t, ncclGroupEnd);
+ ncclResult_t ncclGroupEnd() {
+   ncclResult_t ret = ncclSuccess;
+   NCCL_NVTX3_FUNC_RANGE;
++  if (ncclV5GroupDepth > 0) ncclV5GroupDepth--;   /* NCCL ringonly V5 */
+   NCCLCHECKGOTO(ncclGroupEndInternal(), ret, exit);
+   TRACE_CALL("ncclGroupEnd()");
+ exit:
+@@ -117,6 +122,9 @@ NCCL_API(ncclResult_t, ncclGroupSimulateEnd, ncclSimInfo_t* simInfo);
+ ncclResult_t ncclGroupSimulateEnd(ncclSimInfo_t* simInfo) {
+   ncclResult_t ret = ncclSuccess;
+   NCCL_NVTX3_FUNC_RANGE;
++  if (ncclV5GroupDepth > 0) ncclV5GroupDepth--;   /* NCCL ringonly V5 — SimulateEnd 与
++                                                   * GroupStart 配对语义 (审计B6-W2: 原
++                                                   * 实现不递减会泄漏 depth) */
+   NCCLCHECKGOTO(ncclGroupEndInternal(simInfo), ret, exit);
+   TRACE_CALL("ncclGroupSimulateEnd()");
+ exit:

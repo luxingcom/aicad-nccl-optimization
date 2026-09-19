@@ -1,0 +1,48 @@
+{
+  "ts_iso": "2026-09-04T03:31:08+00:00",
+  "metrics": {
+    "available": true,
+    "running": 0.0,
+    "running_zero": true,
+    "dspark_counters_start": {
+      "drafts_total": 14.0,
+      "draft_tokens_total": 98.0,
+      "accepted_tokens_total": 17.0,
+      "accepted_per_pos": {
+        "0": 8.0,
+        "1": 6.0,
+        "2": 2.0,
+        "3": 1.0,
+        "4": 0.0,
+        "5": 0.0,
+        "6": 0.0
+      }
+    }
+  },
+  "hosts": {
+    "dgxspark01": {
+      "reachable": true,
+      "rc": 0,
+      "stdout": "---GPU---\n0, [N/A]\n---LOAD---\n1071410 /bin/bash -c . '/home/<user>/.zcode/cli/exec/shell-snapshots/snapshot-bash-1788445620755-7ps5nv.sh' 2>/dev/null || true . '/home/<user>/.zcode/cli/exec/bash-startup/sess_aedf50e3-4ec1-407e-a86a-19ed14e09f1f/embedded-search-startup-de32cc6fdea4135d.sh' grep -a \"131076 conc=6 done\" /tmp/bench-pr-v5on.log; cd /opt/aicad-prod && python3 bench_v2.py --endpoint http://192.168.5.186:8002/v1 --metrics-url http://192.168.5.186:8002/metrics --key dummy-bench --model deepseek-v4-flash-0731 --run-type de --uuid-prefix --precheck --out /home/<user>/sparkring-kit/ringonlyV5/results/benchv2-v5on > /tmp/bench-de-v5on.log 2>&1; echo \"DE_RC=$?\" >> /tmp/bench-de-v5on.log; tail -2 /tmp/bench-de-v5on.log\n1071431 python3 bench_v2.py --endpoint http://192.168.5.186:8002/v1 --metrics-url http://192.168.5.186:8002/metrics --key dummy-bench --model deepseek-v4-flash-0731 --run-type de --uuid-prefix --precheck --out /home/<user>/sparkring-kit/ringonlyV5/results/benchv2-v5on\n1071462 ssh -o BatchMode=yes -o ConnectTimeout=8 dgxspark01 docker ps --format '{{.Names}} {{.Status}}' | grep -E 'vllm-tp4-rank|sglang' || true; echo '---GPU---'; nvidia-smi --query-gpu=utilization.gpu,memory.used --format=csv,noheader,nounits 2>/dev/null || true; echo '---LOAD---'; pgrep -af 'bench_prefill|bench_v2|nccl_scan|nccl-test|sglang' || true\n1071658 bash -c docker ps --format '{{.Names}} {{.Status}}' | grep -E 'vllm-tp4-rank|sglang' || true; echo '---GPU---'; nvidia-smi --query-gpu=utilization.gpu,memory.used --format=csv,noheader,nounits 2>/dev/null || true; echo '---LOAD---'; pgrep -af 'bench_prefill|bench_v2|nccl_scan|nccl-test|sglang' || true\n",
+      "stderr": ""
+    },
+    "dgxspark02": {
+      "reachable": true,
+      "rc": 0,
+      "stdout": "---GPU---\n0, [N/A]\n---LOAD---\n3284833 bash -c docker ps --format '{{.Names}} {{.Status}}' | grep -E 'vllm-tp4-rank|sglang' || true; echo '---GPU---'; nvidia-smi --query-gpu=utilization.gpu,memory.used --format=csv,noheader,nounits 2>/dev/null || true; echo '---LOAD---'; pgrep -af 'bench_prefill|bench_v2|nccl_scan|nccl-test|sglang' || true\n",
+      "stderr": ""
+    },
+    "dgxspark03": {
+      "reachable": true,
+      "rc": 0,
+      "stdout": "---GPU---\n0, [N/A]\n---LOAD---\n1929815 bash -c docker ps --format '{{.Names}} {{.Status}}' | grep -E 'vllm-tp4-rank|sglang' || true; echo '---GPU---'; nvidia-smi --query-gpu=utilization.gpu,memory.used --format=csv,noheader,nounits 2>/dev/null || true; echo '---LOAD---'; pgrep -af 'bench_prefill|bench_v2|nccl_scan|nccl-test|sglang' || true\n",
+      "stderr": ""
+    },
+    "dgxspark04": {
+      "reachable": true,
+      "rc": 0,
+      "stdout": "---GPU---\n0, [N/A]\n---LOAD---\n1925571 bash -c docker ps --format '{{.Names}} {{.Status}}' | grep -E 'vllm-tp4-rank|sglang' || true; echo '---GPU---'; nvidia-smi --query-gpu=utilization.gpu,memory.used --format=csv,noheader,nounits 2>/dev/null || true; echo '---LOAD---'; pgrep -af 'bench_prefill|bench_v2|nccl_scan|nccl-test|sglang' || true\n",
+      "stderr": ""
+    }
+  }
+}

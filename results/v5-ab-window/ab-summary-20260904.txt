@@ -1,0 +1,36 @@
+config                          ON       OFF   delta%
+prefill_tps 512@C1          1755.7    1780.3   -1.38%
+prefill_tps 2048@C1         2720.0    2709.4   +0.39%
+prefill_tps 8192@C1         2658.8    2658.0   +0.03%
+prefill_tps 32768@C1        2557.1    1806.5  +41.55%
+prefill_tps 131076@C1       1947.1    2139.9   -9.01%
+prefill_tps 512@C2          1155.9    1369.5  -15.60%
+prefill_tps 2048@C2         2021.9    2050.3   -1.38%
+prefill_tps 8192@C2         1536.2    1585.5   -3.11%
+prefill_tps 32768@C2        1442.8    1431.8   +0.76%
+prefill_tps 131076@C2       1276.2    1273.0   +0.26%
+prefill_tps 512@C4           683.2     642.5   +6.35%
+prefill_tps 2048@C4          906.0     903.4   +0.29%
+prefill_tps 8192@C4          910.1     904.6   +0.61%
+prefill_tps 32768@C4        1002.0    1002.4   -0.04%
+prefill_tps 131076@C4        923.5     934.2   -1.15%
+prefill_tps 512@C6           427.1     419.6   +1.78%
+prefill_tps 2048@C6          718.6     729.5   -1.49%
+prefill_tps 8192@C6          660.3     666.5   -0.93%
+prefill_tps 32768@C6         695.2     700.5   -0.77%
+prefill_tps 131076@C6        636.8     637.9   -0.18%
+decode_ms coding@C1           99.1      99.7   -0.59%
+decode_ms json@C1            100.7     102.1   -1.33%
+decode_ms prose@C1            44.6      44.4   +0.41%
+decode_ms coding@C2           74.9      73.2   +2.28%
+decode_ms json@C2             79.9      79.2   +0.85%
+decode_ms prose@C2            37.2      36.9   +0.84%
+decode_ms coding@C4           52.1      53.0   -1.64%
+decode_ms json@C4             56.4      56.5   -0.34%
+decode_ms prose@C4            26.8      25.8   +4.03%
+decode_ms coding@C6           43.2      42.9   +0.72%
+decode_ms json@C6             47.5      46.6   +1.82%
+decode_ms prose@C6            22.2      21.7   +2.30%
+
+DE decode_ms delta (ON vs OFF, 负=ON更快): median +0.78% mean +0.78% min -1.64% max +4.03% (n=12)
+PR prefill_tps delta (剔除3个低样本离群档): median -0.11% mean -0.50% (n=18)

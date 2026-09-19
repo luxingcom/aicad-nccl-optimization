@@ -1,0 +1,478 @@
+{
+  "group": "v2",
+  "endpoint": "http://192.168.5.186:8002/v1",
+  "model": "deepseek-v4-flash-0731",
+  "engine": "threads",
+  "temperature": 0.6,
+  "rounds": 3,
+  "random_seed": 1644456335,
+  "run_type": "de",
+  "start_ts": "2026-09-04T03:31:11+00:00",
+  "end_ts": "2026-09-04T04:32:53+00:00",
+  "total_elapsed_s": 3702.0,
+  "n_tiers": 12,
+  "tiers": [
+    {
+      "mode": "de",
+      "task_type": "coding",
+      "prefix_len": null,
+      "concurrency": 1,
+      "max_tokens": 4096,
+      "start_ts": "2026-09-04T03:31:16+00:00",
+      "end_ts": "2026-09-04T03:33:21+00:00",
+      "elapsed_s": 125.1,
+      "requests_total": 3,
+      "acceptance_rate": 1.0,
+      "pure_running_eq_c": true,
+      "dspark_accept_rate": 0.6489,
+      "dspark_per_pos_accept": {
+        "0": 0.9234,
+        "1": 0.8381,
+        "2": 0.7457,
+        "3": 0.6546,
+        "4": 0.5739,
+        "5": 0.4617,
+        "6": 0.3449
+      },
+      "dspark_draft_per_request": 739.333,
+      "dspark_counters_start": {
+        "drafts_total": 14.0,
+        "draft_tokens_total": 98.0,
+        "accepted_tokens_total": 17.0
+      },
+      "dspark_counters_end": {
+        "drafts_total": 2232.0,
+        "draft_tokens_total": 15624.0,
+        "accepted_tokens_total": 10092.0
+      }
+    },
+    {
+      "mode": "de",
+      "task_type": "json",
+      "prefix_len": null,
+      "concurrency": 1,
+      "max_tokens": 4096,
+      "start_ts": "2026-09-04T03:33:58+00:00",
+      "end_ts": "2026-09-04T03:36:04+00:00",
+      "elapsed_s": 125.3,
+      "requests_total": 3,
+      "acceptance_rate": 1.0,
+      "pure_running_eq_c": true,
+      "dspark_accept_rate": 0.6434,
+      "dspark_per_pos_accept": {
+        "0": 0.9064,
+        "1": 0.8357,
+        "2": 0.7547,
+        "3": 0.6598,
+        "4": 0.573,
+        "5": 0.4722,
+        "6": 0.3017
+      },
+      "dspark_draft_per_request": 744.667,
+      "dspark_counters_start": {
+        "drafts_total": 2232.0,
+        "draft_tokens_total": 15624.0,
+        "accepted_tokens_total": 10092.0
+      },
+      "dspark_counters_end": {
+        "drafts_total": 4466.0,
+        "draft_tokens_total": 31262.0,
+        "accepted_tokens_total": 20153.0
+      }
+    },
+    {
+      "mode": "de",
+      "task_type": "prose",
+      "prefix_len": null,
+      "concurrency": 1,
+      "max_tokens": 4096,
+      "start_ts": "2026-09-04T03:36:41+00:00",
+      "end_ts": "2026-09-04T03:41:14+00:00",
+      "elapsed_s": 273.5,
+      "requests_total": 3,
+      "acceptance_rate": 1.0,
+      "pure_running_eq_c": true,
+      "dspark_accept_rate": 0.1905,
+      "dspark_per_pos_accept": {
+        "0": 0.6507,
+        "1": 0.3702,
+        "2": 0.1885,
+        "3": 0.0784,
+        "4": 0.0298,
+        "5": 0.0122,
+        "6": 0.0038
+      },
+      "dspark_draft_per_request": 1755.667,
+      "dspark_counters_start": {
+        "drafts_total": 4466.0,
+        "draft_tokens_total": 31262.0,
+        "accepted_tokens_total": 20153.0
+      },
+      "dspark_counters_end": {
+        "drafts_total": 9733.0,
+        "draft_tokens_total": 68131.0,
+        "accepted_tokens_total": 27177.0
+      }
+    },
+    {
+      "mode": "de",
+      "task_type": "coding",
+      "prefix_len": null,
+      "concurrency": 2,
+      "max_tokens": 4096,
+      "start_ts": "2026-09-04T03:41:51+00:00",
+      "end_ts": "2026-09-04T03:44:40+00:00",
+      "elapsed_s": 169.0,
+      "requests_total": 6,
+      "acceptance_rate": 1.0,
+      "pure_running_eq_c": true,
+      "dspark_accept_rate": 0.6463,
+      "dspark_per_pos_accept": {
+        "0": 0.929,
+        "1": 0.842,
+        "2": 0.7476,
+        "3": 0.6555,
+        "4": 0.5636,
+        "5": 0.4571,
+        "6": 0.3294
+      },
+      "dspark_draft_per_request": 741.667,
+      "dspark_counters_start": {
+        "drafts_total": 9733.0,
+        "draft_tokens_total": 68131.0,
+        "accepted_tokens_total": 27177.0
+      },
+      "dspark_counters_end": {
+        "drafts_total": 14183.0,
+        "draft_tokens_total": 99281.0,
+        "accepted_tokens_total": 47310.0
+      }
+    },
+    {
+      "mode": "de",
+      "task_type": "json",
+      "prefix_len": null,
+      "concurrency": 2,
+      "max_tokens": 4096,
+      "start_ts": "2026-09-04T03:45:17+00:00",
+      "end_ts": "2026-09-04T03:47:55+00:00",
+      "elapsed_s": 157.9,
+      "requests_total": 6,
+      "acceptance_rate": 1.0,
+      "pure_running_eq_c": true,
+      "dspark_accept_rate": 0.6862,
+      "dspark_per_pos_accept": {
+        "0": 0.9299,
+        "1": 0.8879,
+        "2": 0.809,
+        "3": 0.7044,
+        "4": 0.6206,
+        "5": 0.5099,
+        "6": 0.3414
+      },
+      "dspark_draft_per_request": 706.0,
+      "dspark_counters_start": {
+        "drafts_total": 14183.0,
+        "draft_tokens_total": 99281.0,
+        "accepted_tokens_total": 47310.0
+      },
+      "dspark_counters_end": {
+        "drafts_total": 18419.0,
+        "draft_tokens_total": 128933.0,
+        "accepted_tokens_total": 67656.0
+      }
+    },
+    {
+      "mode": "de",
+      "task_type": "prose",
+      "prefix_len": null,
+      "concurrency": 2,
+      "max_tokens": 4096,
+      "start_ts": "2026-09-04T03:48:32+00:00",
+      "end_ts": "2026-09-04T03:54:12+00:00",
+      "elapsed_s": 340.6,
+      "requests_total": 6,
+      "acceptance_rate": 1.0,
+      "pure_running_eq_c": true,
+      "dspark_accept_rate": 0.2119,
+      "dspark_per_pos_accept": {
+        "0": 0.6725,
+        "1": 0.4141,
+        "2": 0.2223,
+        "3": 0.1067,
+        "4": 0.0457,
+        "5": 0.0173,
+        "6": 0.0051
+      },
+      "dspark_draft_per_request": 1649.5,
+      "dspark_counters_start": {
+        "drafts_total": 18419.0,
+        "draft_tokens_total": 128933.0,
+        "accepted_tokens_total": 67656.0
+      },
+      "dspark_counters_end": {
+        "drafts_total": 28316.0,
+        "draft_tokens_total": 198212.0,
+        "accepted_tokens_total": 82339.0
+      }
+    },
+    {
+      "mode": "de",
+      "task_type": "coding",
+      "prefix_len": null,
+      "concurrency": 4,
+      "max_tokens": 4096,
+      "start_ts": "2026-09-04T03:54:50+00:00",
+      "end_ts": "2026-09-04T03:58:51+00:00",
+      "elapsed_s": 241.2,
+      "requests_total": 12,
+      "acceptance_rate": 1.0,
+      "pure_running_eq_c": true,
+      "dspark_accept_rate": 0.6487,
+      "dspark_per_pos_accept": {
+        "0": 0.9294,
+        "1": 0.8428,
+        "2": 0.7466,
+        "3": 0.6647,
+        "4": 0.5696,
+        "5": 0.4594,
+        "6": 0.3282
+      },
+      "dspark_draft_per_request": 739.583,
+      "dspark_counters_start": {
+        "drafts_total": 28316.0,
+        "draft_tokens_total": 198212.0,
+        "accepted_tokens_total": 82339.0
+      },
+      "dspark_counters_end": {
+        "drafts_total": 37191.0,
+        "draft_tokens_total": 260337.0,
+        "accepted_tokens_total": 122637.0
+      }
+    },
+    {
+      "mode": "de",
+      "task_type": "json",
+      "prefix_len": null,
+      "concurrency": 4,
+      "max_tokens": 4096,
+      "start_ts": "2026-09-04T03:59:28+00:00",
+      "end_ts": "2026-09-04T04:03:19+00:00",
+      "elapsed_s": 231.0,
+      "requests_total": 12,
+      "acceptance_rate": 1.0,
+      "pure_running_eq_c": true,
+      "dspark_accept_rate": 0.6674,
+      "dspark_per_pos_accept": {
+        "0": 0.9218,
+        "1": 0.8609,
+        "2": 0.7793,
+        "3": 0.6777,
+        "4": 0.5978,
+        "5": 0.5001,
+        "6": 0.3343
+      },
+      "dspark_draft_per_request": 722.333,
+      "dspark_counters_start": {
+        "drafts_total": 37191.0,
+        "draft_tokens_total": 260337.0,
+        "accepted_tokens_total": 122637.0
+      },
+      "dspark_counters_end": {
+        "drafts_total": 45859.0,
+        "draft_tokens_total": 321013.0,
+        "accepted_tokens_total": 163133.0
+      }
+    },
+    {
+      "mode": "de",
+      "task_type": "prose",
+      "prefix_len": null,
+      "concurrency": 4,
+      "max_tokens": 4096,
+      "start_ts": "2026-09-04T04:03:56+00:00",
+      "end_ts": "2026-09-04T04:11:53+00:00",
+      "elapsed_s": 477.1,
+      "requests_total": 12,
+      "acceptance_rate": 1.0,
+      "pure_running_eq_c": true,
+      "dspark_accept_rate": 0.218,
+      "dspark_per_pos_accept": {
+        "0": 0.6635,
+        "1": 0.4115,
+        "2": 0.2276,
+        "3": 0.1177,
+        "4": 0.0584,
+        "5": 0.0308,
+        "6": 0.0162
+      },
+      "dspark_draft_per_request": 1622.0,
+      "dspark_counters_start": {
+        "drafts_total": 45859.0,
+        "draft_tokens_total": 321013.0,
+        "accepted_tokens_total": 163133.0
+      },
+      "dspark_counters_end": {
+        "drafts_total": 65323.0,
+        "draft_tokens_total": 457261.0,
+        "accepted_tokens_total": 192829.0
+      }
+    },
+    {
+      "mode": "de",
+      "task_type": "coding",
+      "prefix_len": null,
+      "concurrency": 6,
+      "max_tokens": 4096,
+      "start_ts": "2026-09-04T04:12:30+00:00",
+      "end_ts": "2026-09-04T04:17:25+00:00",
+      "elapsed_s": 295.0,
+      "requests_total": 18,
+      "acceptance_rate": 1.0,
+      "pure_running_eq_c": true,
+      "dspark_accept_rate": 0.6431,
+      "dspark_per_pos_accept": {
+        "0": 0.9283,
+        "1": 0.8399,
+        "2": 0.7434,
+        "3": 0.6526,
+        "4": 0.5581,
+        "5": 0.4515,
+        "6": 0.3277
+      },
+      "dspark_draft_per_request": 744.889,
+      "dspark_counters_start": {
+        "drafts_total": 65323.0,
+        "draft_tokens_total": 457261.0,
+        "accepted_tokens_total": 192829.0
+      },
+      "dspark_counters_end": {
+        "drafts_total": 78731.0,
+        "draft_tokens_total": 551117.0,
+        "accepted_tokens_total": 253184.0
+      }
+    },
+    {
+      "mode": "de",
+      "task_type": "json",
+      "prefix_len": null,
+      "concurrency": 6,
+      "max_tokens": 4096,
+      "start_ts": "2026-09-04T04:18:02+00:00",
+      "end_ts": "2026-09-04T04:22:37+00:00",
+      "elapsed_s": 275.2,
+      "requests_total": 18,
+      "acceptance_rate": 1.0,
+      "pure_running_eq_c": true,
+      "dspark_accept_rate": 0.6721,
+      "dspark_per_pos_accept": {
+        "0": 0.9244,
+        "1": 0.8664,
+        "2": 0.7776,
+        "3": 0.6815,
+        "4": 0.6073,
+        "5": 0.5064,
+        "6": 0.3413
+      },
+      "dspark_draft_per_request": 718.389,
+      "dspark_counters_start": {
+        "drafts_total": 78731.0,
+        "draft_tokens_total": 551117.0,
+        "accepted_tokens_total": 253184.0
+      },
+      "dspark_counters_end": {
+        "drafts_total": 91662.0,
+        "draft_tokens_total": 641634.0,
+        "accepted_tokens_total": 314023.0
+      }
+    },
+    {
+      "mode": "de",
+      "task_type": "prose",
+      "prefix_len": null,
+      "concurrency": 6,
+      "max_tokens": 4096,
+      "start_ts": "2026-09-04T04:23:14+00:00",
+      "end_ts": "2026-09-04T04:32:51+00:00",
+      "elapsed_s": 577.1,
+      "requests_total": 18,
+      "acceptance_rate": 1.0,
+      "pure_running_eq_c": true,
+      "dspark_accept_rate": 0.2069,
+      "dspark_per_pos_accept": {
+        "0": 0.6596,
+        "1": 0.3978,
+        "2": 0.2134,
+        "3": 0.1026,
+        "4": 0.0466,
+        "5": 0.0195,
+        "6": 0.009
+      },
+      "dspark_draft_per_request": 1673.222,
+      "dspark_counters_start": {
+        "drafts_total": 91662.0,
+        "draft_tokens_total": 641634.0,
+        "accepted_tokens_total": 314023.0
+      },
+      "dspark_counters_end": {
+        "drafts_total": 121780.0,
+        "draft_tokens_total": 852460.0,
+        "accepted_tokens_total": 357646.0
+      }
+    }
+  ],
+  "environment": {
+    "served_models": [
+      "deepseek-v4-flash-0731"
+    ],
+    "max_model_len_note": "model/max_model_len 以 /v1/models 为准（见 bench_cfg）",
+    "precheck": {
+      "ts_iso": "2026-09-04T03:31:08+00:00",
+      "metrics": {
+        "available": true,
+        "running": 0.0,
+        "running_zero": true,
+        "dspark_counters_start": {
+          "drafts_total": 14.0,
+          "draft_tokens_total": 98.0,
+          "accepted_tokens_total": 17.0,
+          "accepted_per_pos": {
+            "0": 8.0,
+            "1": 6.0,
+            "2": 2.0,
+            "3": 1.0,
+            "4": 0.0,
+            "5": 0.0,
+            "6": 0.0
+          }
+        }
+      },
+      "hosts": {
+        "dgxspark01": {
+          "reachable": true,
+          "rc": 0,
+          "stdout": "---GPU---\n0, [N/A]\n---LOAD---\n1071410 /bin/bash -c . '/home/<user>/.zcode/cli/exec/shell-snapshots/snapshot-bash-1788445620755-7ps5nv.sh' 2>/dev/null || true . '/home/<user>/.zcode/cli/exec/bash-startup/sess_aedf50e3-4ec1-407e-a86a-19ed14e09f1f/embedded-search-startup-de32cc6fdea4135d.sh' grep -a \"131076 conc=6 done\" /tmp/bench-pr-v5on.log; cd /opt/aicad-prod && python3 bench_v2.py --endpoint http://192.168.5.186:8002/v1 --metrics-url http://192.168.5.186:8002/metrics --key dummy-bench --model deepseek-v4-flash-0731 --run-type de --uuid-prefix --precheck --out /home/<user>/sparkring-kit/ringonlyV5/results/benchv2-v5on > /tmp/bench-de-v5on.log 2>&1; echo \"DE_RC=$?\" >> /tmp/bench-de-v5on.log; tail -2 /tmp/bench-de-v5on.log\n1071431 python3 bench_v2.py --endpoint http://192.168.5.186:8002/v1 --metrics-url http://192.168.5.186:8002/metrics --key dummy-bench --model deepseek-v4-flash-0731 --run-type de --uuid-prefix --precheck --out /home/<user>/sparkring-kit/ringonlyV5/results/benchv2-v5on\n1071462 ssh -o BatchMode=yes -o ConnectTimeout=8 dgxspark01 docker ps --format '{{.Names}} {{.Status}}' | grep -E 'vllm-tp4-rank|sglang' || true; echo '---GPU---'; nvidia-smi --query-gpu=utilization.gpu,memory.used --format=csv,noheader,nounits 2>/dev/null || true; echo '---LOAD---'; pgrep -af 'bench_prefill|bench_v2|nccl_scan|nccl-test|sglang' || true\n1071658 bash -c docker ps --format '{{.Names}} {{.Status}}' | grep -E 'vllm-tp4-rank|sglang' || true; echo '---GPU---'; nvidia-smi --query-gpu=utilization.gpu,memory.used --format=csv,noheader,nounits 2>/dev/null || true; echo '---LOAD---'; pgrep -af 'bench_prefill|bench_v2|nccl_scan|nccl-test|sglang' || true\n",
+          "stderr": ""
+        },
+        "dgxspark02": {
+          "reachable": true,
+          "rc": 0,
+          "stdout": "---GPU---\n0, [N/A]\n---LOAD---\n3284833 bash -c docker ps --format '{{.Names}} {{.Status}}' | grep -E 'vllm-tp4-rank|sglang' || true; echo '---GPU---'; nvidia-smi --query-gpu=utilization.gpu,memory.used --format=csv,noheader,nounits 2>/dev/null || true; echo '---LOAD---'; pgrep -af 'bench_prefill|bench_v2|nccl_scan|nccl-test|sglang' || true\n",
+          "stderr": ""
+        },
+        "dgxspark03": {
+          "reachable": true,
+          "rc": 0,
+          "stdout": "---GPU---\n0, [N/A]\n---LOAD---\n1929815 bash -c docker ps --format '{{.Names}} {{.Status}}' | grep -E 'vllm-tp4-rank|sglang' || true; echo '---GPU---'; nvidia-smi --query-gpu=utilization.gpu,memory.used --format=csv,noheader,nounits 2>/dev/null || true; echo '---LOAD---'; pgrep -af 'bench_prefill|bench_v2|nccl_scan|nccl-test|sglang' || true\n",
+          "stderr": ""
+        },
+        "dgxspark04": {
+          "reachable": true,
+          "rc": 0,
+          "stdout": "---GPU---\n0, [N/A]\n---LOAD---\n1925571 bash -c docker ps --format '{{.Names}} {{.Status}}' | grep -E 'vllm-tp4-rank|sglang' || true; echo '---GPU---'; nvidia-smi --query-gpu=utilization.gpu,memory.used --format=csv,noheader,nounits 2>/dev/null || true; echo '---LOAD---'; pgrep -af 'bench_prefill|bench_v2|nccl_scan|nccl-test|sglang' || true\n",
+          "stderr": ""
+        }
+      }
+    }
+  }
+}

@@ -9,10 +9,37 @@
 docs/
 ├── adr/          # 架构决策记录（ADR-014 / ADR-015 / ADR-016）
 ├── deployment/   # ★ 部署指南（v1.1 新增，步骤化）
+├── v5-ar2/       # ★ V5-ar2 模块文档（2026-09-04 定版，已晋升生产）
+├── 2hop-archive-extras/ # ★ 2-hop 执行层增量报告（10 份，服务器归档补齐）
+├── stageB-hardening/    # ★ StageB 双分支加固档案（MD5-RECORD + SPCX 劫持验证）
 ├── reports/      # 各阶段分析/验证/审计报告（35 份）
 ├── benchmarks/   # 性能基线文档（v1/v2 基线 + FINALBASE 终版）
+├── VERSION-LANDSCAPE.md # ★ 版本链总览与「V5」消歧（必读入口）
 └── ops/          # 运维文档（部署/runbook/自恢复/治理/排障手册）
 ```
+
+## VERSION-LANDSCAPE.md — 版本链总览（必读）
+
+ringonly 补丁完整版本链（v1→v4→v5-netdev→StageB→**V5-ar2 生产**）、三个 "V5" 语义消歧、
+2-hop 完整闭环（S1→S2→S3 机制级否定，非「未完成」）、生产库 md5 现状与服务器原始路径索引。
+
+## v5-ar2/ — V5-ar2 模块（ringonly V5，2026-09-04 定版并晋升生产）
+
+按尺寸将小消息 allreduce 分发到 ar2 引擎的 NCCL hook 集成。`DELIVERY.md`（交付清单/指纹/回滚）
+为入口；`ARCHITECTURE`/`PROTOCOL`/`API`/`ALGORITHMS`/`BUILD-TEST`/`E2E-REPORT`/`R3-REPORT`/
+`AUDIT-REPORT`/`INTEGRATION-ROADMAP`/`PITFALLS` 等十九件。源码 `src/ar2-engine/`、hook 补丁
+`patches/nccl-ringonly-v5-hook.patch`、A/B 结果 `results/v5-ab-window/`。
+
+## 2hop-archive-extras/ — 2-hop 执行层增量（服务器归档补齐）
+
+S3 step1/2a/2b/诊断四份结果报告、P0 诊断、kernel 设计、S2 QA/验证计划、ADR 原件
+（`nccl-tuner-netdev-hardcode-adr`）、生产修复确认。配套 `archive/2hop-proto/`
+（git-bundle 复现包 + lib md5 血统总表 + S3 门数据 + 失败日志）。
+
+## stageB-hardening/ — StageB 双分支加固档案
+
+服务器 hardened 源码树的 MD5-RECORD（0dd44cd，含 SPCX 劫持验证 PENDING 项）、
+`SPCX-VERIFICATION-PLAN.md` 验证计划、`src/spcx_stub_tuner.c` stub tuner 源码。
 
 ## deployment/ — 部署指南（v1.1 新增）
 
@@ -52,13 +79,14 @@ docs/
 - `nccl-maxch16-ab-window-sop-2026-08-16.md` — MAX_CH16 A/B 窗口 SOP
 - `nccl-p0-scan-results-2026-08-16.md` / `nccl-proto-threshold-scan-2026-08-16.md` — 扫描数据
 
-**2-hop 项目（D 收尾归档）**
+**2-hop 项目（S1→S2→S3 完整闭环，机制级否定，D 收尾归档）**
 - `2hop-s3-final-adjudication-2026-08-17.md` — **终审裁定**（干净否定）★
 - `2hop-archive-manifest-v1-2026-08-17.md` — 归档清单 v1.0
 - `nccl-2hop-kernel-design-architect-2026-08-16.md` / `nccl-2hop-p0-diagnosis-result-architect-2026-08-16.md`
 - `nccl-2hop-s1-prep-report-sre-2026-08-16.md`
 - `nccl-2hop-s2-verification-plan-architect-2026-08-16.md` / `nccl-2hop-s2-readout-architect-2026-08-16.md` / `nccl-2hop-s2-readout-result-architect-2026-08-16.md` / `nccl-2hop-s2-adjudication-architect-2026-08-16.md` / `nccl-2hop-s2-report-qa-2026-08-16.md`
 - `nccl-2hop-s3-phase1-gate-spec-architect-2026-08-16.md` / `nccl-2hop-s3-phase1-build-status-sre-2026-08-16.md` / `nccl-2hop-s3-phase1-window-execution-sre-2026-08-16.md` / `nccl-2hop-s3-phase1-qa-checklist-2026-08-16.md` / `nccl-2hop-s3-step12-adjudication-framework-architect-2026-08-17.md`
+- **执行层增量（2026-09-19 服务器归档补齐）→ `2hop-archive-extras/`**：S3 step1/2a/2b/诊断结果、ADR 原件、生产修复确认 + `archive/2hop-proto/`（git-bundle 复现包 + lib md5 血统 + S3 门数据 + 失败日志）★
 
 ## benchmarks/ — 性能基线
 

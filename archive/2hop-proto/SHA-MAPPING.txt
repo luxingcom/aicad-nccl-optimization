@@ -1,0 +1,15 @@
+# git SHA mapping: original (worktree) -> rewritten (self-contained bundle)
+# reason: original v2.30.7-1 merge (73cf112) has pruned upstream parents (1933fdd/3ec3073f);
+# bundle rewritten via git fast-export/import with graft root (f74ff2f): same tree+message, new SHAs.
+# original_SHA                             rewritten_SHA                            subject
+# ------------------------------------------------------------------------------------------
+0e8f89dd4e14308e999d2ddf5d910c1203f8a570 91878ed1ab06d36018e3197dc254cc6d205f1d51 2hop diagnosis: device-table root cause fix + constants + carry kernel (SRE 2026-08-17)
+23a97987c72afca2e16abde98257e95b00ccf6bc 60485f4223118c598758725ab074196a59329b1e run2Hop: safe ring fallback (custom kernel blocked)
+1a96dc0da309f135fd86442685cd57808ea225be 4892b63615966cf3e1ccc1ae681385e1b7c74592 run2Hop: Archi form C pairwise-exchange fallback (2-step)
+45821494fbb283e53f9ac54e34fbf4d6fc977a63 e87232a3b03294b4e53a32a322cd66089975b1b0 run2Hop: Archi form B symmetric dual-primitive rewrite
+5f037623e6b2378c0bab57126c0acf98da9991c3 9496bad08868a59451d5f6a3756671fc26af8fdc run2Hop: use direct primitives (matching runRing)
+c2dea2799798cb3dfcc11d09e27f389b58e248e8 45879dab1ca1af0862ce3f15a582bb7eadbbbfbc Fix 2HOP plumbing: add preconnect case (group.cc) + algo string (collectives.cc)
+2203d2410204b51c3c60f65952952856308b93ab 575f8798c102f58178ed6508759d62a21ff06041 Fix CUDA device lambda annotation in run2Hop
+7ee636ba53a6e2ba9f4c66733318d449f3f6da81 53205ad562ce1025fb4f8f530b177b53ab32f31b Add 2HOP algorithm (Form A-minimal proto): run2Hop kernel + plumbing
+6eac65947b426115d1d6af065cfffcf9ed32628b e543def7a213400f3262903ff82f14dd7caca212 2hop-proto base: clean v2.30.7 + ring-only v1+v4 (no tuner)
+73cf112295c33aee2b895f329f592f2a9b4b0f97 f74ff2fd2b5193921a4a055fb8ecb1f7f1b81fef Merge v2.30.7-1 release into master
