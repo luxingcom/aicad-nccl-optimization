@@ -1,0 +1,37 @@
+# /etc/systemd/system/dsv41-head-monitor.service 模板 — 自愈监护（实录坑6修正版）
+#
+# 坑6 复盘：systemd 以 root 创建 `StandardOutput=append:` 的日志文件；
+#   之后 User=admin 的进程写不进去 → 单元显示 active 但故障时不重建，自愈链静默失灵。
+#   launch.json（重建链要写）同理。
+#
+# 本版本要点：
+#   1. User=/Group= 与 ExecStartPre 配 PermissionsStartOnly=yes 联动：
+#      ExecStartPre 以 root 跑（能 chown），主进程以 User= 跑。
+#   2. 日志与 state 目录每次启动前强制 chown，根治「root 建文件」残留。
+#   3. 部署后必须实测自愈（实录纪律11）：docker kill 容器 → 观察能否自动重建。
+#
+# 占位符替换表：
+#   <SVC_USER>   运行用户（实录示例 admin）
+#   <DEPLOY_DIR> 部署目录（实录示例 /home/admin/dsv41-4x-spark）
+#   <LOG_DIR>    日志目录（实录示例 /home/admin/logs-tp4，含 monitor.log）
+#   <STATE_DIR>  状态目录（实录示例 /home/admin/state-tp4，含 launch.json）
+#   <START_CMD>  起栈命令（实录示例 /home/admin/dsv41-4x-spark/start-tp4.sh serve）
+[Unit]
+Description=TP4 head monitor with self-heal (deploy-kit v1.1)
+After=network-online.target docker.service
+Wants=network-online.target docker.service
+StartLimitIntervalSec=1800
+StartLimitBurst=20
+
+[Service]
+User=<SVC_USER>
+Group=<SVC_USER>
+PermissionsStartOnly=yes
+ExecStartPre=/bin/sh -c 'mkdir -p <LOG_DIR> <STATE_DIR> && chown -R <SVC_USER>:<SVC_USER> <LOG_DIR> <STATE_DIR>'
+ExecStart=<START_CMD>
+Restart=always
+RestartSec=15
+TimeoutStartSec=1500
+
+[Install]
+WantedBy=multi-user.target

@@ -7,11 +7,13 @@
 
 | 文件 | 内容 |
 |---|---|
-| `production-nccl-env.md` | **NCCL 环境参数基线**：全部 NCCL_* 环境变量、含义、历史对照、生产库 md5（建议先读） |
+| `production-nccl-env.md` | **NCCL 环境参数基线**：全部 NCCL_* 环境变量、含义、历史对照、生产库 md5（建议先读）；含 **v5/ADR-016 新增 `NCCL_RING_DEV_MAP*`** 键位说明 |
 | `daemon.json` | Docker 守护进程配置（四机统一：json-file / max-size=100m / max-file=5，P1 治理） |
 | `vllm-tp4-head.service` | systemd 单元（head/rank0，<node1>），含 P1 Wants=docker.service |
 | `vllm-tp4-worker.service` | systemd 单元（worker/rank1-3，<node2>/03/04）参考模板 |
 | `vllm-healthcheck.service-timer.md` | 自恢复健康探针 systemd oneshot + timer（60s 周期，cooldown 1800s） |
+
+> ★ 部署用**可直接落盘的修正版模板**在 `deploy/`（GPU 锁频单元坑5修正版、自愈 monitor 坑6修正版、netplan 环网模板、env 样例）；本目录保持「服务器生产快照」定位。
 
 ## 关键参数速览
 

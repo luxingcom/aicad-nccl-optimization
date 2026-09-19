@@ -1,0 +1,29 @@
+# /etc/systemd/system/admin-clock-cap.service — GB10 GPU 锁频（实录坑5修正版）
+#
+# 坑5 复盘：原单元 ExecStart 被断行成三行：
+#     ExecStart=/bin/bash -c nvidia-smi
+#     -lgc                  <- systemd 报 "Missing '=', ignoring line"
+#     0,2400
+#   实际只执行了无参数的 nvidia-smi，锁频从未生效（GPU 跑 208 MHz）。
+#
+# 本版本要点：
+#   1. ExecStart 必须单行、参数完整（-lgc 2400,2400）。
+#   2. GB10 上 `-lgc 0,2400` 是软上限只跑 2242；必须写 `2400,2400` 才能锁住（实录实测 2392-2398）。
+#   3. oneshot + RemainAfterExit=yes：开机执行一次即退出，systemd 记录为 active。
+#   4. 部署后验证（三步，缺一不可）：
+#        systemctl enable --now admin-clock-cap
+#        systemctl status admin-clock-cap          # active (exited)
+#        nvidia-smi --query-gpu=clocks.sm --format=csv,noheader   # 期望 2392-2398
+#
+# 若历史单元存在先清理：systemctl disable --now gpu-lock-2250.service 2>/dev/null
+[Unit]
+Description=Cap GB10 GPU clock uniformly (rank balance for TP4 collectives)
+After=network.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/nvidia-smi -lgc 2400,2400
+
+[Install]
+WantedBy=multi-user.target

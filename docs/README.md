@@ -7,11 +7,18 @@
 
 ```
 docs/
-├── adr/          # 架构决策记录（ADR-014 / ADR-015 含 S1.1-S1.13 演进）
+├── adr/          # 架构决策记录（ADR-014 / ADR-015 / ADR-016）
+├── deployment/   # ★ 部署指南（v1.1 新增，步骤化）
 ├── reports/      # 各阶段分析/验证/审计报告（35 份）
 ├── benchmarks/   # 性能基线文档（v1/v2 基线 + FINALBASE 终版）
-└── ops/          # 运维文档（部署/runbook/自恢复/治理）
+└── ops/          # 运维文档（部署/runbook/自恢复/治理/排障手册）
 ```
+
+## deployment/ — 部署指南（v1.1 新增）
+
+| 文件 | 内容 |
+|---|---|
+| `DEPLOYMENT-GUIDE.md` | **四机环网部署指南**：Phase1 系统层 → Phase2 物理层 → Phase3 定制库 → Phase4 组件 → Phase5 起栈 → Phase6 验收；每步带验证命令与实录坑位号 |
 
 ## adr/ — 决策记录
 
@@ -19,6 +26,7 @@ docs/
 |---|---|---|
 | `ADR-014-per-size-protocol-internal-tuning-vs-plugin.md` | per-size 协议控制：内部 tuning.cc 双带 vs 外部 tuner 插件（S1 阻断后裁决：采用内部改码） | Accepted |
 | `ADR-015-ringonly-netdev-hardcode-S1-S1.13.md` | ring-only P2 netDev 硬编码 per-peer 映射（S1.1-S1.14 全演进：源码漂移→官方重建→StageB→双分支加固→2-hop 归档→**B1 通道数 16→4 固化**） | Accepted |
+| `ADR-016-ring-devmap-runtime-configurable-v5.md` | **per-peer 映射升级为运行期可配置**（v5 补丁：内建默认表=v4 + `NCCL_RING_DEV_MAP*` 覆盖；换拓扑免重编库；依据客户部署实录坑1） | Accepted |
 | `b1-compat-adjudication-criteria-architect-2026-08-17.md` | **B1 兼容性判读口径**（tuner 路由 / 112KB / 368KB 外推接受区间 / 通道数 / 连接 / md5 / shim / health / 端到端，供实测验收） | 参考 |
 
 ## reports/ — 报告（35 份）
@@ -75,6 +83,7 @@ docs/
 - `P1实施与自恢复演练审核结论-20260817.md` — P1 审核定稿（Archi）
 - `四机重启自恢复演练-QA报告-20260817.md` — QA 判读
 - `self-recovery.md` / `fault-tolerance.md` / `maintenance-plans.md` / `ops-discipline-quickref.md` — 运维纪律手册
+- **`troubleshooting-playbook.md` — ★排障手册（v1.1 新增：实录 10 坑 + 7 思路错误 → 症状/根因/修复/验证）**
 
 **治理 / 审计**
 - `nccl-secret-audit-qa-2026-08-17.md` — 明文密码/密钥审计（结论：生产运行链无明文凭据）

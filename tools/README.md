@@ -5,6 +5,17 @@
 
 ## 文件清单
 
+### 部署工具链（v1.1 新增，2026-09-19，配合 docs/deployment/DEPLOYMENT-GUIDE.md）
+
+| 文件 | 用途 | 对应实录教训 |
+|---|---|---|
+| `precheck.sh` | **四机一致性 + 系统层预检**（P0 只读 fail-closed）：内核/驱动/MTU/RoCE 口/GRUB 固化/DKMS 残留/锁频单元单行/systemd 权限；`--ips` 走 ssh 巡检 | 坑2/3/5/6/7、错误6 |
+| `probe_ring_topology.sh` | **环网拓扑实测**（唯一探针 IP + `ip neigh` 读对端 MAC）：产出 per-rank probe JSON；接线对不对以此为准 | 坑1、错误1/6 |
+| `gen_devmap.py` | **拓扑 → 设备映射**：校验（环闭合/口用满 0..3）后生成 `NCCL_RING_DEV_MAP` 串与 `ring-devmap.json`（配合 v5 补丁，换拓扑免重编库） | 坑1、ADR-016 |
+| `doctor.sh` | **运行期全量体检**（只读）：容器真实 env（坑9）、NCCL_DEBUG_FILE 落点可写（坑4）、LD_PRELOAD 路径存在性（错误4）、RING-ONLY 日志条数（库生效铁证）、错误签名扫描、API 探测与 API_KEY 四机指纹（坑10）；`--ips` 四机巡检 | 坑4/9/10、错误4 |
+
+### 基准与运维（原有）
+
 | 文件 | 用途 | 来源 |
 |---|---|---|
 | `bench_v2.py` | **v2 基准测试主脚本**（32 档：DE 12 + PR 20）。QA 整改后 `--key` 默认取 `VLLM_API_KEY` env（显式 --key 优先），避免 key 落命令行/日志。含 **LR-PATCH**（131K 长前缀 prefill 600s 每读超时） | `/opt/aicad-prod/bench_v2.py`（md5 f72e9e84→56ad5ef2） |

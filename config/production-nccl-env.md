@@ -62,6 +62,8 @@
 | `NCCL_NET_PLUGIN` | none | 禁用外部 tuner 插件防劫持 | S1.12 双分支加固 |
 | `NCCL_IB_HCA` | 4 口 | 双口 × 2（roceP2p1s0f* 为 P2 口） | v3 验证 |
 | `NCCL_IB_PEER_HCA` | —（已移除） | P1 治理已从脚本删除（库内硬编码 per-peer 映射替代） | ADR-015 / S1.13 §附带 |
+| `NCCL_RING_DEV_MAP` | （空=内建默认） | **v5/ADR-016 新增**：运行期 per-peer 设备映射（字符串形态，优先）；由 `tools/gen_devmap.py` 从实测拓扑生成，禁手写；非法值 WARN + 回退内建默认表 | ADR-016 |
+| `NCCL_RING_DEV_MAP_FILE` | （空=不用） | **v5/ADR-016 新增**：同上，JSON 文件形态（容器内须可读）；`NCCL_RING_DEV_MAP` 已设时被忽略 | ADR-016 |
 
 ## 3. 生产库 md5 快照
 
@@ -70,5 +72,7 @@
 | 生产（当前） | `/opt/nccl-ringonly/libnccl.so.2.30.7` | `2be94172c1172734d00dee9ff7d788bd` |
 | 备份（stageB hardened 前） | `/opt/nccl-ringonly/libnccl.so.2.30.7.bak-hardened-20260816` | 3d9cf539（阶段B glibcfix） |
 | 归档 | `/opt/aicad-prod/backup/nccl-official-2307-*` | 见各归档 MD5-RECORD.txt |
+| **v5 库（ADR-016，待窗口上线）** | 构建后四机同 md5 安装 | **上线后在此登记新 md5**（v5 源码变更 ⇒ md5 必变 ⇒ 不得沿用本表任何旧值） |
 
 > ⚠️ 生产库二进制不随资料包分发；重建指引见 `patches/README.md`。
+> ⚠️ **指标登记纪律**：v5 上线时必须实测登记新 md5，并同步 `tools/precheck.sh` 的期望值与验收单。

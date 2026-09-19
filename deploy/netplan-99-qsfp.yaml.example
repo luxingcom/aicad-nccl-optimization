@@ -1,0 +1,34 @@
+# /etc/netplan/99-qsfp.yaml — 四机环网 IP 模板（坑：接线必须与库内映射一致，先实测再配）
+#
+# 使用说明（对应部署指南 §2.3）：
+#   1. 把 <HEAD_F0_1> 等占位符替换为下表规划的实际地址（同一 /29 段的两台 = 物理直连对）。
+#   2. 权限必须 root:root 600：  install -m 600 -o root -g root 99-qsfp.yaml /etc/netplan/
+#   3. 应用：  netplan apply   （四机全部配置完再逐台应用，避免半环状态）
+#   4. 验证：  用 tools/probe_ring_topology.sh 实测拓扑（唯一探针 IP + ip neigh 读对端 MAC），
+#      实测结果与本文规划一致后才允许起栈（实录坑1：接线装反 = ibv_modify_qp 110）。
+#
+# 环网参考布局（可按现场改 IP，但「同段=直连」关系不可变）：
+#   f0（靠近 RJ45 口）/ f1（远离 RJ45 口）各成一对物理边；每边 2 根线。
+#
+# 本模板示例 = 实录拓扑（rank0=.130 head, rank1=.17, rank2=.18, rank3=.129）：
+#   环序: rank0 -f1- rank1 -f0- rank2 -f1- rank3 -f0- rank0
+#   f0 边: r0<->r3 用 10.100.0.0/29；f1 边: r0<->r1 用 10.100.1.0/29
+#          r1<->r2 用 10.100.0.8/29（实录 .18 段示例写法）；r2<->r3 用 10.100.24.0/29
+#   ⚠️ 每台机器的两张卡 4 个口：f0 两口 + f1 两口；口名以现场为准（示例 rocep1s0f0 等）。
+---
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    rocep1s0f0:            # f0 口1（dev 索引 0）
+      mtu: 9000
+      addresses: [<F0_ADDR_1>/29]
+    rocep1s0f1:            # f1 口1（dev 索引 1）
+      mtu: 9000
+      addresses: [<F1_ADDR_1>/29]
+    roceP2p1s0f0:          # f0 口2（dev 索引 2）
+      mtu: 9000
+      addresses: [<F0_ADDR_2>/29]
+    roceP2p1s0f1:          # f1 口2（dev 索引 3）
+      mtu: 9000
+      addresses: [<F1_ADDR_2>/29]

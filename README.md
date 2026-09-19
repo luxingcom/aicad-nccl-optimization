@@ -2,8 +2,23 @@
 
 > **项目**：DGX Spark 四机环网 TP4 vLLM（DeepSeek V4 Flash 0731）NCCL allreduce 延迟优化
 > **团队**：工程保障团队（Archi 架构 / Rex SRE / Tessa QA）
-> **周期**：2026-08-15 ~ 2026-08-17
+> **周期**：2026-08-15 ~ 2026-08-17（资料包定版）；**v1.1 组件化（2026-09-19）**
 > **状态**：✅ 生产终态定版（Stage B hardened `2be94172` 已上线），2-hop 实验 D 收尾归档
+> **v1.1 变更**：依据客户部署实录将「资料包」升级为「可部署组件」——新增 v5 可配置补丁（ADR-016，换拓扑免重编库）、部署指南、排障手册、预检/探针/doctor 工具链、deploy 模板；修复 v4 补丁 hunk 行数缺陷与全部补丁 CRLF 问题
+
+---
+
+## 0. 我要部署（新用户从这里开始）
+
+```
+第 1 步  读 docs/deployment/DEPLOYMENT-GUIDE.md（步骤化，每步带验证命令）
+第 2 步  跑 tools/precheck.sh      —— 四机一致性预检（fail-closed）
+第 3 步  接线 + tools/probe_ring_topology.sh 实测拓扑（物理层优先！）
+第 4 步  python3 tools/gen_devmap.py --topology topology.json   → 生成设备映射
+第 5 步  按 patches/README.md §2 重建库（v5 补丁栈），deploy/ 模板落组件
+第 6 步  起栈 → tools/doctor.sh → deploy/ACCEPTANCE-CHECKLIST.md 逐项验收
+出问题时  docs/ops/troubleshooting-playbook.md（症状 → 根因 → 修复 → 验证）
+```
 
 ---
 
@@ -28,24 +43,29 @@
 github-repo/
 ├── README.md                 # 本文件（项目总览/成果/复现指引）
 ├── docs/                     # 全部分析文档（35+19 份，见 docs/README.md 索引）
-│   ├── adr/                  # ADR-014 / ADR-015（含 S1.1-S1.13 决策演进）
+│   ├── adr/                  # ADR-014 / ADR-015 / ADR-016（含 S1.1-S1.13 决策演进）
+│   ├── deployment/           # ★ 部署指南（DEPLOYMENT-GUIDE.md，步骤化+验证命令）
 │   ├── reports/              # 最终报告 + 各阶段分析/验证/审计 + 2-hop 归档（35 份）
 │   ├── benchmarks/           # 最终性能基线 v3 + v2 基准协议（10 份）
-│   └── ops/                  # 部署/自恢复/治理/审计（19 份）
-├── patches/                  # 6 个 NCCL 定制补丁 + 2-hop 归档补丁 + 应用脚本（README 含重建指引）
+│   └── ops/                  # 部署/自恢复/治理/审计（19 份）＋★ troubleshooting-playbook.md
+├── patches/                  # NCCL 定制补丁（v5 可配置版领衔）+ 2-hop 归档补丁
 ├── config/                   # 环境参数基线（NCCL env / daemon.json / systemd / healthcheck）
+├── deploy/                   # ★ 部署组件模板（netplan / systemd / env / 验收清单）
 ├── src/                      # tuner 插件源码 + 2-hop 实验脚本（轻量参考，不含二进制）
-└── tools/                    # 运维/测试脚本（bench_v2 / healthcheck / clean_tmp / mirror）
+└── tools/                    # 运维/测试/部署工具链（precheck / probe / doctor / gen_devmap …）
 ```
 
 **快速入口**
 | 想了解 | 读 |
 |---|---|
+| **我要部署** | `docs/deployment/DEPLOYMENT-GUIDE.md` ★ |
+| **出问题怎么查** | `docs/ops/troubleshooting-playbook.md` ★ |
 | 整体结论 | `docs/reports/00-FINAL-REPORT-nccl-optimization-2026-08-16.md` |
 | 性能基线数据 | `docs/benchmarks/00-FINAL-BASELINE-v3-2026-08-17.md` |
-| 为什么这么做 | `docs/adr/ADR-014-*.md` + `docs/adr/ADR-015-*.md` |
+| 为什么这么做 | `docs/adr/ADR-014-*.md` + `ADR-015-*.md` + `ADR-016-*.md` |
 | 补丁与重建 | `patches/README.md` |
 | 当前生产参数 | `config/production-nccl-env.md` |
+| 部署组件模板 | `deploy/`（netplan / systemd / env / 验收清单） |
 | 自恢复方案 | `docs/ops/production-self-healing-plan-architect-2026-08-17.md` |
 
 ---
@@ -70,17 +90,17 @@ github-repo/
 - 软件：vLLM 0.26 TP4（DeepSeek V4 Flash 0731），CUDA 13.0.2，NCCL 2.30.7 ring-only
 - 构建容器：`anemll/dspark-vllm-gx10:0.2.1-v026.0`（glibc 2.35，CUDA 13.0）
 
-### 4.2 重建生产库（md5 2be94172）
+### 4.2 重建生产库（v5 补丁栈；生产 v4 库 md5 2be94172 的重建见 patches/README.md §5）
 ```bash
 git clone https://github.com/NVIDIA/nccl -b v2.30.7-1 nccl-2307
 cd nccl-2307
-git apply patches/v1-ring-only.patch
-git apply patches/v4-netdev-hardcode.patch
-git apply patches/stageB-tuner-two-band.patch
-git apply patches/stageB-hardened-two-branch.patch
+git apply ../patches/v1-ring-only.patch
+git apply ../patches/v5-netdev-configurable.patch   # ADR-016：内建默认表=v4，支持 NCCL_RING_DEV_MAP* 覆盖
+git apply ../patches/stageB-tuner-two-band.patch
+git apply ../patches/stageB-hardened-two-branch.patch
 make -j src.build CUDA_HOME=/usr/local/cuda \
   NVCC_GENCODE=-gencode=arch=compute_121,code=sm_121
-# 部署：四机同 md5 安装为 /opt/nccl-ringonly/libnccl.so.2
+# 部署：四机同 md5 安装为 /opt/nccl-ringonly/libnccl.so.2；md5 同步登记 config/production-nccl-env.md §3
 ```
 
 ### 4.3 跑基准（32 档）
