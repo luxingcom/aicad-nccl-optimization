@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0  (see LICENSE — learning/research use)
 #!/usr/bin/env python3
 """V2b hardware microbenchmark: bilateral concurrent send on GB10 two ports.
 

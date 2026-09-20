@@ -1,0 +1,32 @@
+AICAD NCCL Optimization — DGX Spark TP4 ring communication kit
+Copyright 2026 luxingcom
+
+This product includes software developed as part of the AICAD engineering
+assurance effort.
+
+===== Third-party components =====
+
+This repository is an optimization kit distributed as patches, scripts, and
+documentation. It does not redistribute NCCL source or binaries.
+
+* NVIDIA Collective Communications Library (NCCL)
+  https://github.com/NVIDIA/nccl — Copyright (c) 2015-2026, NVIDIA CORPORATION
+  & AFFILIATES. Licensed under the BSD-3-Clause License ("NCCL License").
+  The patches under patches/ modify NCCL 2.30.7 source; applying them produces
+  a derivative of NCCL governed by the NCCL License. This repository ships
+  only the text of the patches.
+
+* vLLM — Copyright the vLLM team. Apache License 2.0. Referenced by the
+  deployment tooling; not redistributed here.
+
+* DGX Spark, NCCL, ConnectX, CUDA are trademarks of their respective owners
+  (NVIDIA Corporation; Mellanox/NVIDIA). This project is not affiliated with
+  or endorsed by NVIDIA.
+
+===== Disclaimer =====
+
+This software is provided for learning, research, and technical exchange only
+(see LICENSE for warranty terms). It is NOT intended for production use.
+The patches modify collective-communication behavior deep inside NCCL; a
+mis-built or mis-deployed library can corrupt data or crash distributed jobs.
+Validate any build against the acceptance checklist before relying on it.

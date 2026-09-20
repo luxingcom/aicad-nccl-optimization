@@ -1,3 +1,9 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright 2026 luxingcom
+ * (see LICENSE; AICAD NCCL optimization kit — learning/research use)
+ */
+
 // spcx_stub_tuner.c — simulate an external tuner plugin hijack (SPCX-like) for verifying
 // PerSizeTuner dual-branch hardening (stageB-hardened-two-branch, ADR-014/015).
 //

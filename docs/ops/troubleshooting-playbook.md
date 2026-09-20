@@ -12,7 +12,7 @@
 | | |
 |---|---|
 | **根因** | 环网接线与库内 per-peer 映射不符（实录坑1：F0/F1 整体装反）。**这是排障第一嫌疑。** |
-| **确认** | worker 日志：`rank1 peer0 走 dev rocep1s0f1 → local 10.100.1.3 ↔ remote 10.100.24.1`（不同段 = 物理不直连）；`ibv_modify_qp failed with 110 Connection timed out` |
+| **确认** | worker 日志：`rank1 peer0 走 dev rocep1s0f1 → local 198.51.100.1 ↔ remote 198.51.100.24`（不同段 = 物理不直连）；`ibv_modify_qp failed with 110 Connection timed out` |
 | **修复** | **四根边 F0/F1 整体对调**（谁连谁不变，八根线全换口）。禁止靠改 `NCCL_IB_HCA` 顺序「软修」——库按物理设备名选 dev，实测配对不变（错误1）。 |
 | **验证** | `tools/probe_ring_topology.sh` 实测拓扑逐边比对；若与库默认表不一致，用 `tools/gen_devmap.py` 生成 `NCCL_RING_DEV_MAP` 下发（v5 免重编库）。 |
 

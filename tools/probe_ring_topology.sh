@@ -7,12 +7,12 @@
 #       —— 实录教训①「物理层优先」的落地：接线对不对，以本工具实测为准，
 #          不相信文档、不相信记忆、不相信别人的拓扑图。
 # USAGE:
-#   bash probe_ring_topology.sh --ips 192.168.5.130,192.168.5.17,192.168.5.18,192.168.5.129 \
-#        --ranks 0,1,2,3 --ring-ips 10.100.0.1,10.100.1.1,... [--out topology.json]
+#   bash probe_ring_topology.sh --ips 192.0.2.130,192.0.2.17,192.0.2.18,192.0.2.129 \
+#        --ranks 0,1,2,3 --ring-ips 198.51.100.1,198.51.100.1,... [--out topology.json]
 #   （--ring-ips：按 rank 顺序给出每台机的环网 IP 列表，逗号分隔各机，机内多 IP 用 + 分隔；
 #     本脚本只对这些 IP 做连通性探测；MAC 对照需要 root 时自动加 sudo。）
 # 更实用形态（在 head 上，逐邻探测）：
-#   bash probe_ring_topology.sh --ping 10.100.0.1,10.100.0.2,10.100.1.1,10.100.1.2 \
+#   bash probe_ring_topology.sh --ping 198.51.100.1,198.51.100.2,198.51.100.1,198.51.100.1 \
 #        --label rank0-probe [--out probe-rank0.json]
 #   # 在每台机对本机全部环网 IP 探一轮，把 4 份 JSON 交给 gen_devmap.py 前人工/脚本比对
 # EXITCODES: 0=探测完成 1=存在不可达 IP 2=用法错误

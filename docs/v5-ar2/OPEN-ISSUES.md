@@ -47,7 +47,7 @@ tuner 路径、baked 镜像构建链（W2 报告有完整流程与三个坑）�
 
 ## #2 [已裁决·关闭] baked-v6 测试镜像不纳入正式版本（2026-09-04 用户裁决）
 
-**裁决**：baked-v6（全名=测试镜像 `192.168.5.187:5000/vllm/vllm-openai:LuZ0.4.5-DeepSeek-v4-Flash-DGXspark-TP4-Ring-baked-v6`，
+**裁决**：baked-v6（全名=测试镜像 `192.0.2.187:5000/vllm/vllm-openai:LuZ0.4.5-DeepSeek-v4-Flash-DGXspark-TP4-Ring-baked-v6`，
 digest 62670d69）现有状态**没有任何优势**（稳态 AR 回归中性），不纳入正式版本。
 其验证资产（两轮 PR/DE 全绿、冷启动根因结论、镜像构建流程）保留作为 NCCL ringonly V5 的工艺输入。
 SKIP_TREE_CONNECT 的收益由 V5 模块按需继承。

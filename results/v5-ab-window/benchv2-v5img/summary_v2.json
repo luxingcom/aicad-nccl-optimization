@@ -1,7 +1,7 @@
 {
   "group": "v2",
   "model": "deepseek-v4-flash-0731",
-  "endpoint": "http://192.168.5.186:8002/v1",
+  "endpoint": "http://192.0.2.186:8002/v1",
   "engine": "threads",
   "summary": [
     {

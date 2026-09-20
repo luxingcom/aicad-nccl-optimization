@@ -14,7 +14,7 @@
 4. **改脚本**：先 `cp` 留 `.bak-<tag>` + `check_vllm_script.sh` 通过 + Rex 验证，禁止裸改。
 5. **回滚**：见 `rollback-anchors-2026-08-12.md`；TP2 降级唯一入口 `start_v026r_cluster.sh`（01，全程未动）。
 6. **rules.v4**：只允许 `iptables-save-custom.sh` 落盘（剔除 docker 动态 DOCKER 链）；新 RoCE 网段配 IP 必须同步放行 iptables。
-7. **自检用对外 IP**：`curl http://127.0.0.1:8001/...` 会被 docker-proxy 绕过造成假象，必须用 192.168.x 或环内地址。
+7. **自检用对外 IP**：`curl http://127.0.0.1:8001/...` 会被 docker-proxy 绕过造成假象，必须用环内真实地址（示例环境用 198.51.100.x 文档段）。
 
 ## §1 停机（维护窗口）标准流程
 

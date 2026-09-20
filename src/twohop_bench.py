@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0  (see LICENSE — learning/research use)
 #!/usr/bin/env python3
 """S2 bench: ring(real) vs manual ring(6-step) vs 2-hop sim(4-step).
 

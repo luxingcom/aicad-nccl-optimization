@@ -4,7 +4,7 @@
 set -u
 NAME=${1:?run-name}; shift
 declare -A RANK_HOST=( [0]="dgxspark01" [1]="dgxspark02" [2]="dgxspark04" [3]="dgxspark03" )
-PEERS="192.168.5.186,192.168.5.187,192.168.5.189,192.168.5.188"
+PEERS="192.0.2.186,192.0.2.187,192.0.2.189,192.0.2.188"
 OUT=~/sparkring-kit/ringonlyV5/results; mkdir -p "$OUT"; RUNID=$(date +%H%M%S)
 AR2_ENV=${AR2_ENV:-}
 TMO=${TMO:-420}

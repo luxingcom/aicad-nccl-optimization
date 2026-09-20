@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0  (see LICENSE — learning/research use)
 #!/usr/bin/env python3
 """S2 item: CUDA graph compatibility pre-validation for 2-hop bilateral comm.
 

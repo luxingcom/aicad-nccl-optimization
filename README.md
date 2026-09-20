@@ -1,5 +1,13 @@
 # AICAD DGX Spark 四机 TP4 · NCCL 通信优化资料包
 
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+![Status](https://img.shields.io/badge/status-%E4%BB%85%E5%AD%A6%E4%B9%A0%E4%BA%A4%E6%B5%81-orange)
+
+> ⚠️ **免责声明 / Disclaimer**：本项目仅用于**学习、研究与交流**，不构成生产级软件，
+> 作者不对任何直接或间接损失承担责任。生产环境使用前须自行完成完整验收。
+> **For learning, research, and technical exchange only — not for production use.**
+> See [LICENSE](LICENSE) (Apache-2.0) and [NOTICE](NOTICE).
+
 > **项目**：DGX Spark 四机环网 TP4 vLLM（DeepSeek V4 Flash 0731）NCCL allreduce 延迟优化
 > **团队**：工程保障团队（Archi 架构 / Rex SRE / Tessa QA）
 > **周期**：2026-08-15 ~ 2026-08-17（资料包定版）；**v1.1 组件化（2026-09-19）**；**v1.2 服务器资料并档（2026-09-19）**
@@ -170,4 +178,33 @@ bash tools/healthcheck.sh --role head   # 只读探针
 
 ---
 
-*资料包整理：Archi（系统架构师）· 2026-08-17 · 提交至 GitHub（任务二）*
+## 8. 许可与第三方组件
+
+- 本仓库（补丁、脚本、文档）以 **Apache License 2.0** 发布，见 [LICENSE](LICENSE)。
+- 第三方组件与商标归属见 [NOTICE](NOTICE)：NCCL（BSD-3-Clause，Copyright NVIDIA）、
+  vLLM（Apache-2.0）。patches/ 仅分发补丁文本；应用补丁后的 NCCL 衍生构建受
+  NCCL 原许可约束，本项目不随包分发 NCCL 源码或二进制。
+- 贡献流程见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+
+---
+
+## 9. 免责声明（仅学习交流用途）
+
+> **本项目按"现状"提供，仅用于学习、研究与交流目的，不得用于生产环境。**
+
+1. 本项目修改的是 NCCL 集合通信库的深层行为。构建或部署不当可能导致**数据静默损坏、
+   分布式任务崩溃或性能劣化**。使用本项目产生的任何后果由使用者自行承担。
+2. 作者与贡献者**不对**本项目作任何明示或默示的担保，包括但不限于适销性、
+   特定用途适用性与不侵权（详见 LICENSE 第 7 条）。
+3. 在任何场景下，作者与贡献者均不对因使用或无法使用本项目而产生的任何
+   直接、间接、附带、特殊、惩戒性或后果性损害承担责任（详见 LICENSE 第 8 条）。
+4. 项目中出现的性能数字均为特定硬件/软件/拓扑组合下的实测记录，
+   **不构成对任何其他环境的性能承诺**。
+5. 若将本项目或其衍生物用于公开发布，请自行核实第三方组件（NCCL/vLLM）
+   许可的合规性，并保留 NOTICE 文件中的归属声明。
+6. DGX Spark、NCCL、ConnectX、CUDA 等为 NVIDIA 的商标；本项目与 NVIDIA
+   无隶属或背书关系。
+
+---
+
+*资料包整理：Archi（系统架构师）· 2026-08-17 · 提交至 GitHub（任务二）· Apache 规范化 2026-09-20*

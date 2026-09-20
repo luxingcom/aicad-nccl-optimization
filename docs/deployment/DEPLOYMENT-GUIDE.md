@@ -114,7 +114,7 @@ GB10 陷阱：`-lgc 0,2400` 是软上限只跑 2242；必须写 `2400,2400`。
 
 ```bash
 # 每台机对本机全部环网 IP 探一轮（探针期别在多台机同时跑，避免 neigh 表互相污染）
-bash tools/probe_ring_topology.sh --ping 10.100.0.1,10.100.0.2,10.100.1.1,10.100.1.2 \
+bash tools/probe_ring_topology.sh --ping 198.51.100.1,198.51.100.2,198.51.100.1,198.51.100.1 \
      --label rank0-probe --out probe-rank0.json
 # 四机各出一份 JSON；逐条核对「谁连谁、走哪个口」与规划一致。
 # 任何一条边对不上 ⇒ 动线，不是动配置。

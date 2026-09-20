@@ -1,4 +1,10 @@
 /*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright 2026 luxingcom
+ * (see LICENSE; AICAD NCCL optimization kit — learning/research use)
+ */
+
+/*
  * libncclpin.so v9 — DGX Spark NCCL/EngineCore 线程绑核 shim
  *
  * 基线: v3 (open-kit 2026-08-13 归档) + 生产 v8 实测问题 (2026-08-14 取证)

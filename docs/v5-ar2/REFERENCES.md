@@ -53,7 +53,7 @@
 | 项 | 值 |
 |---|---|
 | round0 NIC | rocep1s0f1（全员，136/138 网） |
-| round1 NIC | roceP2p1s0f0（141 网 + 10.20.0.13/14，避开 NFS .9/.10） |
+| round1 NIC | roceP2p1s0f0（141 网 + 198.51.100.13/14，避开 NFS .9/.10） |
 | GID index | 3 |
 | QP | RC, MTU≤4096, timeout=14, retry=7, rnr_retry=7, inline 64B |
 | 控制口 | 9500（probe），生产 tuner 集成时建议独立端口段 |

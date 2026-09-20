@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0  (see LICENSE — learning/research use)
 #!/usr/bin/env python3
 """P0-2: 反转机制复现诊断 (adjudication §3/§5.2, architect refinement).
 

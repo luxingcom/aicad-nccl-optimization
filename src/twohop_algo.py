@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0  (see LICENSE — learning/research use)
 """2-hop allreduce simulation + manual ring — algorithm core (S1 sentinel).
 
 Serves the SAME algorithm code to:

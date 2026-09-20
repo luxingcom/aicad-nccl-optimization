@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0  (see LICENSE — learning/research use)
 #!/usr/bin/env python3
 # =============================================================
 # SCRIPT: gen_devmap.py

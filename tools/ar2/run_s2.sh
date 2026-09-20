@@ -3,9 +3,9 @@
 # 纪律: ①起容器 ②容器内 pkill 清僵尸(docker exec 不传播 timeout 信号!) ③并行跑 ④pkill+rm 清理
 set -u
 MODE=${1:?m1|layer|kill}
-IMG="192.168.5.187:5000/vllm/vllm-openai:LuZ0.4.5-DeepSeek-v4-Flash-DGXspark-TP4-Ring-baked"
+IMG="192.0.2.187:5000/vllm/vllm-openai:LuZ0.4.5-DeepSeek-v4-Flash-DGXspark-TP4-Ring-baked"
 declare -A RANK_HOST=( [0]="dgxspark01" [1]="dgxspark02" [2]="dgxspark04" [3]="dgxspark03" )
-PEERS="192.168.5.186,192.168.5.187,192.168.5.189,192.168.5.188"
+PEERS="192.0.2.186,192.0.2.187,192.0.2.189,192.0.2.188"
 OUT=~/sparkring-kit/s2/results; mkdir -p "$OUT"; RUNID=$(date +%H%M%S)
 
 up() {

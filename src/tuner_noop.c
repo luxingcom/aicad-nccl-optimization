@@ -1,3 +1,9 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright 2026 luxingcom
+ * (see LICENSE; AICAD NCCL optimization kit — learning/research use)
+ */
+
 /*************************************************************************
  * tuner_noop.c — 最小 no-op 插件：只验证【加载插件本身】对 net 连接的影响
  * 逻辑：init 分配 context；getCollInfo 不做任何修改直接返回 ncclSuccess；
