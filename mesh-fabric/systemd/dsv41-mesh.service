@@ -1,0 +1,21 @@
+[Unit]
+Description=Hardware-forwarded opposite-node paths for RoCEnante on the ring (routes, tc rules, source markers)
+Wants=network-online.target
+After=network-online.target NetworkManager-wait-online.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+TimeoutStartSec=300
+# The fabric links can come up a few seconds after network-online.
+ExecStartPre=/bin/bash -c 'for i in $(seq 1 60); do ok=1; for n in enp1s0f0np0 enp1s0f1np1 enP2p1s0f0np0 enP2p1s0f1np1; do [ "$(cat /sys/class/net/$n/operstate 2>/dev/null)" = up ] || ok=0; done; [ $ok = 1 ] && exit 0; sleep 2; done; exit 1'
+# This fleet needs trust=pcp before any hairpin rule offloads (6.17-nvidia mlx5 constraint).
+# hairpin_queue_size resets to the driver default at boot; 8192 packets lifts the clean RoCE size to ~480 KB.
+ExecStartPre=/opt/dsv41-mesh/hairpin.sh 8192
+# hairpin.sh's devlink driver_reinit RESETS trust to dscp; qos must re-assert pcp AFTER it
+ExecStartPre=/opt/dsv41-mesh/qos.sh
+ExecStart=/opt/dsv41-mesh/mesh-up.sh
+ExecStop=/opt/dsv41-mesh/mesh-down.sh
+
+[Install]
+WantedBy=multi-user.target

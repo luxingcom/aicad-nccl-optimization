@@ -1,0 +1,11 @@
+[Unit]
+Description=RDMA-TX source marker on %i (opposite-node traffic, UDP source port 65535 -> EtherType 0x88b5)
+After=network-online.target
+
+[Service]
+Type=simple
+# Built from FujitsuPolycom/sparkring spark_transport/fabric/cx7_hairpin_diagonal/native/mlx5_rdma_tx_rewrite_probe.c
+ExecStart=/opt/dsv41-mesh/bin/mlx5-rdma-tx-rewrite-probe --device %i --source-port 65535 --replacement-ethertype 0x88b5 --attach --managed
+Restart=on-failure
+RestartSec=2
+KillSignal=SIGTERM

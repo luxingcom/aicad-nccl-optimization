@@ -1,0 +1,21 @@
+network:
+  version: 2
+  renderer: NetworkManager
+  ethernets:
+    enP2p1s0f0np0:
+      dhcp4: false
+    enP2p1s0f1np1:
+      dhcp4: false
+      addresses:
+      - 10.100.137.1/24
+      mtu: 9000
+      routes:
+      - to: 10.20.0.14/32
+        via: 10.100.137.2
+    enp1s0f0np0:
+      dhcp4: false
+    enp1s0f1np1:
+      dhcp4: false
+      addresses:
+      - 10.100.136.1/24
+      mtu: 9000

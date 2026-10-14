@@ -1,0 +1,218 @@
+{
+  "captured_utc": "2026-09-28T15:05:00Z",
+  "comment": "黄金拓扑：生产健康态采集（2026-09-28）。2026-10-09 FABRIC-SELFHEAL W1：routes32 保名改容=B1 canonical 集（12 条 /24(/30)+4 残/32，netplan 固化同步）；fabricctl F06/F09 消费面不变。2026-10-14 A-21 案 A（E1 尾批 1）：+4 条 mesh-up /32 对角路由收编（dsv41-mesh boot 重放持久化；guard b2 判据同批增计 mesh-up 在册证据）。",
+  "hosts": {
+    "dgxspark01": {
+      "role": "head,rank0,nfs-exporter->03",
+      "ports": {
+        "enp1s0f0np0": {
+          "ip": "10.100.140.1",
+          "mac": "fc:9d:05:13:05:ce"
+        },
+        "enp1s0f1np1": {
+          "ip": "10.100.136.1",
+          "mac": "fc:9d:05:13:05:cf"
+        },
+        "enP2p1s0f0np0": {
+          "ip": "10.100.141.1",
+          "mac": "fc:9d:05:13:05:d2"
+        },
+        "enP2p1s0f1np1": {
+          "ip": "10.100.137.1",
+          "mac": "fc:9d:05:13:05:d3"
+        }
+      },
+      "markers": [
+        "rocep1s0f0",
+        "roceP2p1s0f1"
+      ],
+      "tc_ingress_prefs": {
+        "enP2p1s0f0np0": [
+          49159
+        ],
+        "enP2p1s0f1np1": [
+          49165
+        ]
+      },
+      "routes32": [
+        "10.100.138.0/24 via 10.100.140.2 dev enp1s0f0np0",
+        "10.100.138.3 via 10.100.140.2 dev enp1s0f0np0",
+        "10.100.139.0/24 via 10.100.141.2 dev enP2p1s0f0np0",
+        "10.20.0.14 via 10.100.137.2 dev enP2p1s0f1np1"
+      ],
+      "gid3": {
+        "rocep1s0f0": "10.100.140.1",
+        "rocep1s0f1": "10.100.136.1",
+        "roceP2p1s0f0": "10.100.141.1",
+        "roceP2p1s0f1": "10.100.137.1"
+      },
+      "nfs_mount": null,
+      "exports": [
+        {
+          "path": "/data/models/DeepSeek-V4.1-Flash",
+          "client": "10.100.140.2"
+        }
+      ]
+    },
+    "dgxspark02": {
+      "role": "worker,rank1,nfs-exporter->04",
+      "ports": {
+        "enp1s0f0np0": {
+          "ip": "10.20.0.9",
+          "mac": "fc:9d:05:13:0c:6a"
+        },
+        "enp1s0f1np1": {
+          "ip": "10.100.136.2",
+          "mac": "fc:9d:05:13:0c:6b"
+        },
+        "enP2p1s0f0np0": {
+          "ip": "10.20.0.13",
+          "mac": "fc:9d:05:13:0c:6e"
+        },
+        "enP2p1s0f1np1": {
+          "ip": "10.100.137.2",
+          "mac": "fc:9d:05:13:0c:6f"
+        }
+      },
+      "markers": [
+        "rocep1s0f0",
+        "roceP2p1s0f1"
+      ],
+      "tc_ingress_prefs": {
+        "enP2p1s0f0np0": [
+          49161
+        ],
+        "enP2p1s0f1np1": [
+          49155
+        ]
+      },
+      "routes32": [
+        "10.100.138.0/24 via 10.20.0.10 dev enp1s0f0np0",
+        "10.100.138.2 via 10.20.0.10 dev enp1s0f0np0",
+        "10.100.139.0/24 via 10.20.0.14 dev enP2p1s0f0np0",
+        "10.100.141.2 via 10.100.137.1 dev enP2p1s0f1np1"
+      ],
+      "gid3": {
+        "rocep1s0f0": "10.20.0.9",
+        "rocep1s0f1": "10.100.136.2",
+        "roceP2p1s0f0": "10.20.0.13",
+        "roceP2p1s0f1": "10.100.137.2"
+      },
+      "nfs_mount": null,
+      "exports": [
+        {
+          "path": "/data/models/DeepSeek-V4.1-Flash",
+          "client": "10.20.0.10"
+        }
+      ]
+    },
+    "dgxspark03": {
+      "role": "worker,rank3,nfs-client<-01",
+      "ports": {
+        "enp1s0f0np0": {
+          "ip": "10.100.140.2",
+          "mac": "30:c5:99:3f:3f:4e"
+        },
+        "enp1s0f1np1": {
+          "ip": "10.100.138.2",
+          "mac": "30:c5:99:3f:3f:4f"
+        },
+        "enP2p1s0f0np0": {
+          "ip": "10.100.141.2",
+          "mac": "30:c5:99:3f:3f:52"
+        },
+        "enP2p1s0f1np1": {
+          "ip": "10.100.139.2",
+          "mac": "30:c5:99:3f:3f:53"
+        }
+      },
+      "markers": [
+        "rocep1s0f1",
+        "roceP2p1s0f0"
+      ],
+      "tc_ingress_prefs": {
+        "enp1s0f0np0": [
+          49152
+        ],
+        "enp1s0f1np1": [
+          49162
+        ]
+      },
+      "routes32": [
+        "10.20.0.8/30 via 10.100.138.3 dev enp1s0f1np1",
+        "10.20.0.9 via 10.100.138.3 dev enp1s0f1np1",
+        "10.20.0.12/30 via 10.100.139.3 dev enP2p1s0f1np1",
+        "10.100.136.0/24 via 10.100.140.1 dev enp1s0f0np0",
+        "10.100.137.0/24 via 10.100.141.1 dev enP2p1s0f0np0",
+        "10.100.137.2 via 10.100.141.1 dev enP2p1s0f0np0"
+      ],
+      "gid3": {
+        "rocep1s0f0": "10.100.140.2",
+        "rocep1s0f1": "10.100.138.2",
+        "roceP2p1s0f0": "10.100.141.2",
+        "roceP2p1s0f1": "10.100.139.2"
+      },
+      "nfs_mount": {
+        "target": "/data/models/dsv41-net",
+        "source": "10.100.140.1:/data/models/DeepSeek-V4.1-Flash",
+        "fstype": "nfs4",
+        "options": "ro,vers=4.2,rsize=1048576,wsize=1048576,nconnect=4,hard,timeo=600,retrans=2,proto=tcp"
+      },
+      "exports": []
+    },
+    "dgxspark04": {
+      "role": "worker,rank2,nfs-client<-02",
+      "ports": {
+        "enp1s0f0np0": {
+          "ip": "10.20.0.10",
+          "mac": "30:c5:99:3f:31:c5"
+        },
+        "enp1s0f1np1": {
+          "ip": "10.100.138.3",
+          "mac": "30:c5:99:3f:31:c6"
+        },
+        "enP2p1s0f0np0": {
+          "ip": "10.20.0.14",
+          "mac": "30:c5:99:3f:31:c9"
+        },
+        "enP2p1s0f1np1": {
+          "ip": "10.100.139.3",
+          "mac": "30:c5:99:3f:31:ca"
+        }
+      },
+      "markers": [
+        "rocep1s0f1",
+        "roceP2p1s0f0"
+      ],
+      "tc_ingress_prefs": {
+        "enp1s0f0np0": [
+          49166
+        ],
+        "enp1s0f1np1": [
+          49156
+        ]
+      },
+      "routes32": [
+        "10.100.136.0/24 via 10.20.0.9 dev enp1s0f0np0",
+        "10.100.137.0/24 via 10.20.0.13 dev enP2p1s0f0np0",
+        "10.100.137.1 via 10.20.0.13 dev enP2p1s0f0np0",
+        "10.100.140.0/24 via 10.100.138.2 dev enp1s0f1np1",
+        "10.100.140.1 via 10.100.138.2 dev enp1s0f1np1",
+        "10.100.141.0/24 via 10.100.139.2 dev enP2p1s0f1np1"
+      ],
+      "gid3": {
+        "rocep1s0f0": "10.20.0.10",
+        "rocep1s0f1": "10.100.138.3",
+        "roceP2p1s0f0": "10.20.0.14",
+        "roceP2p1s0f1": "10.100.139.3"
+      },
+      "nfs_mount": {
+        "target": "/data/models/dsv41-net",
+        "source": "10.20.0.9:/data/models/DeepSeek-V4.1-Flash",
+        "fstype": "nfs4",
+        "options": "ro,vers=4.2,rsize=1048576,wsize=1048576,nconnect=4,hard,timeo=600,retrans=2,proto=tcp"
+      },
+      "exports": []
+    }
+  }
+}

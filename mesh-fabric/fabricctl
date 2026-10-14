@@ -1,0 +1,269 @@
+#!/usr/bin/env python3
+"""fabricctl — RoCE 环网通讯基础层 检查/自愈/自检 标准化模型。
+
+子命令:
+  check [--json] [--topology PATH]   对照黄金拓扑逐项断言（只读）；PASS=rc0，FAIL=rc1
+  heal [--deep] [--topology PATH]     幂等自愈：重启 marker(强制重挂 HCA 规则)→重跑 mesh-up→(NFS 补挂)→复查
+                                      --deep 额外先跑 hairpin.sh+qos.sh（devlink reinit 路径，重
+                                      置 HCA 后必须；mesh-up 尾部会 restart marker）
+  fix-nfs [--topology PATH]          仅补挂 NFS（03/04 专用）
+  status [--topology PATH]           人读摘要
+  selftest                           判别力自检：坏拓扑必须因正确理由变红（喂 4 类坏输入）
+
+设计教训（都来自 2026-09 事故链，见 NEGATIVE-REGISTRY C 系列与 doc78/83）:
+  - mesh 重装(hairpin.sh devlink reinit)会抹 marker 的 HCA 流规则；systemctl start 对已运行
+    单元是 no-op ⇒ 幽灵失挂。check 用 journalctl 本靴 "attached":true 兜住该形态（F03）。
+  - hairpin 只转 0x88b5：ping 跨 mesh 不通≠路径坏；真判据=tc in_hw + marker attached + GID + 路由。
+  - 03/04 的 /data/models/dsv41-net 无 fstab ⇒ 重启即空 ⇒ 引擎 crash-loop；fix-nfs/heal 兜底，
+    systemd 持久化另由 mount unit 承担。
+"""
+import argparse, json, os, re, socket, subprocess, sys
+
+HERE = os.path.dirname(os.path.realpath(__file__))
+# 部署布局=/opt/dsv41-mesh/bin/../topology.json；仓库布局=scripts/ring_mesh/topology.json
+DEFAULT_TOPO = next(p for p in (
+    os.path.join(HERE, "..", "topology.json"),
+    os.path.join(HERE, "topology.json")) if os.path.exists(p))
+MESH_DIR = "/opt/dsv41-mesh"
+
+def run(cmd, timeout=15):
+    return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+
+def sudo(cmd, timeout=60):
+    pw_path = os.path.expanduser("~/.sudopw")
+    full = ["sudo", "-S", "-k", "-p", ""] + cmd
+    stdin = open(pw_path) if os.path.exists(pw_path) else subprocess.DEVNULL
+    try:
+        return subprocess.run(full, stdin=stdin, capture_output=True, text=True, timeout=timeout)
+    finally:
+        if hasattr(stdin, "close"):
+            stdin.close()
+
+class Checker:
+    def __init__(self, topo, host):
+        self.topo, self.host, self.results = topo, host, []
+
+    def add(self, cid, ok, detail):
+        self.results.append({"id": cid, "ok": bool(ok), "detail": detail})
+
+    def run_all(self):
+        h = self.topo["hosts"].get(self.host)
+        if h is None:
+            self.add("F00", False, f"host {self.host} 不在拓扑中")
+            return
+        # F01 mesh 单元
+        r = run(["systemctl", "is-active", "dsv41-mesh.service"])
+        self.add("F01", r.stdout.strip() == "active", f"dsv41-mesh={r.stdout.strip()!r}")
+        # F02 marker 单元 active
+        for d in h["markers"]:
+            r = run(["systemctl", "is-active", f"dsv41-mesh-marker@{d}.service"])
+            self.add("F02", r.stdout.strip() == "active", f"marker@{d}={r.stdout.strip()!r}")
+        # F03 marker 本靴确实 attached（抓幽灵失挂——devlink reinit 抹规则而单元仍 running）
+        # 审计甲 P1-5：-n 40 可被滚出窗口→假红→活栈路径触发 heal；扩到 200
+        for d in h["markers"]:
+            r = run(["journalctl", "-u", f"dsv41-mesh-marker@{d}.service", "-b", "--no-pager", "-n", "200"])
+            attached = '"attached":true' in r.stdout
+            self.add("F03", attached, f"marker@{d} journal attached=true={attached}")
+        # F04 tc flower 在硬件。审计甲 P0-1：段必须截到下一个 tc 块边界——否则同端口
+        # 残留旧代 pref 块的 in_hw 会遮蔽黄金 pref 掉硬件（假绿=环网门静默失守）
+        for port, prefs in h["tc_ingress_prefs"].items():
+            r = run(["tc", "-s", "filter", "show", "dev", port, "ingress"])
+            for pref in prefs:
+                idx = r.stdout.rfind(f"pref {pref} ")
+                if idx >= 0:
+                    nxt = r.stdout.find("\nfilter ", idx + 1)
+                    seg = r.stdout[idx: nxt if nxt >= 0 else len(r.stdout)]
+                else:
+                    seg = ""
+                ok = "flower" in seg and "in_hw" in seg
+                self.add("F04", ok, f"{port} pref {pref} flower+in_hw={ok}")
+        # F05 GID3 = 期望 IPv4（对角/邻接 QP 的地址根基；断电 GID 洞在此现形）
+        r = run(["show_gids"])
+        gidlines = r.stdout.splitlines() if r.returncode == 0 else []
+        for dev, ip in h["gid3"].items():
+            hit = any(re.search(rf"^{dev}\s+\d+\s+3\s+\S+\s+{re.escape(ip)}\s", ln) for ln in gidlines)
+            self.add("F05", hit, f"{dev} gid3=={ip}={hit}")
+        # F06 /32 路由逐条
+        r = run(["ip", "route"])
+        for want in h["routes32"]:
+            ok = want + " " in r.stdout or r.stdout.rstrip("\n").endswith(want) or any(
+                ln.strip().startswith(want) for ln in r.stdout.splitlines())
+            self.add("F06", ok, f"route '{want}'={ok}")
+        # F07 端口 MTU/状态/载波
+        for port, meta in h["ports"].items():
+            try:
+                mtu = open(f"/sys/class/net/{port}/mtu").read().strip()
+                st = open(f"/sys/class/net/{port}/operstate").read().strip()
+                car = open(f"/sys/class/net/{port}/carrier").read().strip()
+            except OSError:
+                self.add("F07", False, f"{port} sysfs 缺失")
+                continue
+            ok = mtu == "9000" and st == "up" and car == "1"
+            self.add("F07", ok, f"{port} mtu={mtu} state={st} carrier={car}")
+        # F08 ip_forward
+        v = open("/proc/sys/net/ipv4/ip_forward").read().strip()
+        self.add("F08", v == "1", f"ip_forward={v}")
+        # F09 路由网关邻居可解析（FAILED/空 = 对角 L2 下一跳黑洞）
+        for want in h["routes32"]:
+            m = re.match(r"(\S+) via (\S+) dev (\S+)$", want)
+            if not m:
+                continue
+            _, gw, dev = m.groups()
+            r = run(["ip", "neigh", "show", "dev", dev, gw])
+            ok = "lladdr" in r.stdout and "FAILED" not in r.stdout and "INCOMPLETE" not in r.stdout
+            self.add("F09", ok, f"neigh {gw}@{dev}={'lladdr' if ok else r.stdout.strip() or 'EMPTY'}")
+        # F10 NFS：客户端挂载在位 / 导出端在册。审计甲 P1-3：加 options 令牌比对——
+        # heal 补挂串与 unit/实挂漂移（retrans/fatal_neterrors 等）在此现形
+        if h.get("nfs_mount"):
+            r = run(["findmnt", "-n", "-o", "SOURCE", h["nfs_mount"]["target"]])
+            want = h["nfs_mount"]["source"]
+            self.add("F10", r.stdout.strip() == want, f"nfs {h['nfs_mount']['target']} src={r.stdout.strip()!r} want={want!r}")
+            ro = run(["findmnt", "-n", "-o", "OPTIONS", h["nfs_mount"]["target"]])
+            mounted = {}
+            for tok in ro.stdout.strip().split(","):
+                if "=" in tok:
+                    k, v = tok.split("=", 1)
+                    mounted[k] = v
+            drift = [t for t in h["nfs_mount"]["options"].split(",")
+                     if "=" in t and mounted.get(t.split("=", 1)[0]) != t.split("=", 1)[1]]
+            self.add("F10", not drift, f"nfs opts drift={drift or '无'}")
+        for e in h.get("exports", []):
+            r = run(["cat", "/etc/exports.d/dsv41.conf"])
+            ok = e["path"] in r.stdout and e["client"] in r.stdout
+            self.add("F10", ok, f"export {e['path']}->{e['client']}={ok}")
+            r = run(["systemctl", "is-active", "nfs-server.service"])
+            self.add("F10", r.stdout.strip() == "active", f"nfs-server={r.stdout.strip()!r}")
+
+    def ok(self):
+        return all(x["ok"] for x in self.results)
+
+def load_topo(path):
+    with open(path) as f:
+        return json.load(f)
+
+def cmd_check(args):
+    topo = load_topo(args.topology or DEFAULT_TOPO)
+    host = socket.gethostname()
+    c = Checker(topo, host)
+    c.run_all()
+    if args.json:
+        print(json.dumps({"host": host, "pass": c.ok(), "results": c.results}, ensure_ascii=False))
+    else:
+        for x in c.results:
+            print(("PASS" if x["ok"] else "FAIL"), x["id"], x["detail"])
+        print(("FABRIC CHECK PASS " + host) if c.ok() else ("FABRIC CHECK FAIL " + host))
+    return 0 if c.ok() else 1
+
+def cmd_heal(args):
+    topo = load_topo(args.topology or DEFAULT_TOPO)
+    host = socket.gethostname()
+    h = topo["hosts"].get(host)
+    if h is None:
+        print(f"heal: host {host} 不在拓扑中，退出")
+        return 1
+    print(f"[heal] {host} 开始（幂等；--deep={'on' if args.deep else 'off'}）")
+    if args.deep:
+        for script in ("hairpin.sh", "qos.sh"):
+            r = sudo(["bash", f"{MESH_DIR}/{script}"] + (["8192"] if script == "hairpin.sh" else []), timeout=300)
+            print(f"[heal] {script} rc={r.returncode} {(r.stdout + r.stderr).strip()[:200]}")
+    # mesh-up 尾部已 restart marker（2026-09-28 修复）；显式再补一轮，双保险
+    r = sudo(["bash", f"{MESH_DIR}/mesh-up.sh"], timeout=300)
+    print(f"[heal] mesh-up rc={r.returncode} {(r.stdout + r.stderr).strip()[:300]}")
+    for d in h["markers"]:
+        sudo(["systemctl", "restart", f"dsv41-mesh-marker@{d}.service"], timeout=60)
+    if h.get("nfs_mount"):
+        r = run(["findmnt", "-n", "-o", "SOURCE", h["nfs_mount"]["target"]])
+        if r.stdout.strip() != h["nfs_mount"]["source"]:
+            sudo(["mkdir", "-p", h["nfs_mount"]["target"]])
+            r = sudo(["mount", "-t", h["nfs_mount"]["fstype"], "-o", h["nfs_mount"]["options"],
+                      h["nfs_mount"]["source"], h["nfs_mount"]["target"]], timeout=120)
+            print(f"[heal] nfs 补挂 rc={r.returncode} {(r.stdout + r.stderr).strip()[:200]}")
+    rc = cmd_check(argparse.Namespace(json=False, topology=args.topology))
+    print(f"[heal] 终态 check rc={rc}")
+    return rc
+
+def cmd_fix_nfs(args):
+    topo = load_topo(args.topology or DEFAULT_TOPO)
+    h = topo["hosts"].get(socket.gethostname()) or {}
+    m = h.get("nfs_mount")
+    if not m:
+        print("fix-nfs: 本机无期望 NFS 挂载（01/02 为导出端），no-op")
+        return 0
+    r = run(["findmnt", "-n", "-o", "SOURCE", m["target"]])
+    if r.stdout.strip() == m["source"]:
+        print(f"fix-nfs: {m['target']} 已挂 {m['source']}")
+        return 0
+    sudo(["mkdir", "-p", m["target"]])
+    r = sudo(["mount", "-t", m["fstype"], "-o", m["options"], m["source"], m["target"]], timeout=120)
+    print(f"fix-nfs: mount rc={r.returncode} {(r.stdout + r.stderr).strip()[:200]}")
+    return r.returncode
+
+def cmd_status(args):
+    return cmd_check(argparse.Namespace(json=False, topology=args.topology))
+
+def cmd_selftest(args):
+    """判别力自检：真实拓扑必须 PASS；四类坏输入必须因正确理由变红。不改任何系统状态。"""
+    host = socket.gethostname()
+    base = load_topo(args.topology or DEFAULT_TOPO)
+    real = Checker(base, host)
+    real.run_all()
+    bad_count = 0
+
+    def corrupt(mutator):
+        t = json.loads(json.dumps(base))
+        mutator(t["hosts"][host])
+        return Checker(t, host)
+
+    def expect_fail(c, want_id, name):
+        nonlocal bad_count
+        c.run_all()
+        reds = [x for x in c.results if not x["ok"]]
+        ids = {x["id"] for x in reds}
+        good = (not c.ok()) and (want_id in ids)
+        bad_count += 0 if good else 1
+        print(("SELFTEST-RED-OK " if good else "SELFTEST-MISSED ") + name,
+              f"(reds={sorted(ids) or 'NONE'})")
+
+    if host not in base["hosts"]:
+        print(f"selftest: {host} 不在拓扑中，只能验宿主外场景——跳过")
+        return 1
+    expect_fail(corrupt(lambda h: h.__setitem__("markers", h["markers"] + ["roceP2p1s0f1x"])), "F02", "幽灵marker单元")
+    expect_fail(corrupt(lambda h: h["tc_ingress_prefs"].__setitem__(list(h["tc_ingress_prefs"])[0], [99999])), "F04", "tc pref缺失")
+    # P0-1 遮蔽形态负例：黄金 pref 块已掉硬件（无 in_hw），同端口后置陈旧 pref 块带
+    # in_hw——旧判法（段切到输出末尾）判绿=假绿，修后必须红。mock 仅 tc 命令，零系统动作。
+    _port0 = list(base["hosts"][host]["tc_ingress_prefs"])[0]
+    _pref0 = base["hosts"][host]["tc_ingress_prefs"][_port0][0]
+    _fake_tc = (
+        f"filter protocol ip pref {_pref0} flower chain 0 \n"
+        "  action order 1: mirred (Egress Redirect)\n"
+        f"filter protocol ip pref {_pref0 + 999} flower chain 0 in_hw\n"
+        "  action order 1: mirred (Egress Redirect)\n"
+    )
+    _real_run = run
+    def _fake_run(cmd, **kw):
+        if list(cmd[:3]) == ["tc", "-s", "filter"]:
+            return argparse.Namespace(returncode=0, stdout=_fake_tc, stderr="")
+        return _real_run(cmd, **kw)
+    globals()["run"] = _fake_run
+    expect_fail(Checker(base, host), "F04", "tc 后置块遮蔽(P0-1)")
+    globals()["run"] = _real_run
+    expect_fail(corrupt(lambda h: h["gid3"].__setitem__(list(h["gid3"])[0], "10.99.99.99")), "F05", "GID洞")
+    expect_fail(corrupt(lambda h: h.__setitem__("routes32", ["10.100.199.1 via 10.100.199.2 dev enp1s0f0np0"])), "F06", "路由缺失")
+    if base["hosts"][host].get("nfs_mount"):
+        expect_fail(corrupt(lambda h: h["nfs_mount"].__setitem__("source", "10.99.99.99:/x")), "F10", "NFS丢挂")
+        expect_fail(corrupt(lambda h: h["nfs_mount"].__setitem__(
+            "options", h["nfs_mount"]["options"].replace("retrans=2", "retrans=9"))), "F10", "NFS opts漂移(P1-3)")
+    ok_real = real.ok()
+    print(("SELFTEST BASE PASS " if ok_real else "SELFTEST BASE FAIL ") + host)
+    return 0 if (ok_real and bad_count == 0) else 1
+
+if __name__ == "__main__":
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    p = sub.add_parser("check"); p.add_argument("--json", action="store_true"); p.add_argument("--topology"); p.set_defaults(fn=cmd_check)
+    p = sub.add_parser("heal"); p.add_argument("--deep", action="store_true"); p.add_argument("--topology"); p.set_defaults(fn=cmd_heal)
+    p = sub.add_parser("fix-nfs"); p.add_argument("--topology"); p.set_defaults(fn=cmd_fix_nfs)
+    p = sub.add_parser("status"); p.add_argument("--topology"); p.set_defaults(fn=cmd_status)
+    p = sub.add_parser("selftest"); p.add_argument("--topology"); p.set_defaults(fn=cmd_selftest)
+    args = ap.parse_args()
+    sys.exit(args.fn(args))

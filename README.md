@@ -13,7 +13,17 @@
 > **周期**：2026-08-15 ~ 2026-08-17（资料包定版）；**v1.1 组件化（2026-09-19）**；**v1.2 服务器资料并档（2026-09-19）**
 > **状态**：✅ 生产终态定版（Stage B hardened `2be94172` → **V5-ar2 模块 2026-09-04 晋升生产**，在役 libnccl `51e36db5` + libar2 `343bea89`）；2-hop 实验 S1→S3 完整闭环后机制级否定归档（非未完成）
 > **v1.1 变更**：依据客户部署实录将「资料包」升级为「可部署组件」——新增 v5 可配置补丁（ADR-016，换拓扑免重编库）、部署指南、排障手册、预检/探针/doctor 工具链、deploy 模板；修复 v4 补丁 hunk 行数缺陷与全部补丁 CRLF 问题
+> **v1.3 变更（2026-10-14）**：新增 **mesh 硬件转发层全套并档**（[mesh-fabric/](mesh-fabric/README.md)）——CX-7 无交换机 RoCE 环网基础设施：拓扑生成器（plan.py/inventory.sh/fabricctl）+硬件 tc hairpin 规则与驱动预置（hairpin 8192/trust pcp）+RDMA-TX 源标记探针（sparkring cx7_hairpin_diagonal native）+systemd 引导单元对+netplan 正典+Q3bA 正典拓扑+守卫自愈套件（GID 断电修复等五件）+九章研究报告与三参考对照定谳文档。本层与仓内 NCCL ring-only 件构成完整通信栈。
 > **v1.2 变更**：服务器取证并档（dgxspark01）——①收录 **V5-ar2 模块**全套（ar2 引擎源码 + hook 补丁 + 文档十九件 + A/B 结果 + md5 血统；2026-09-04 已晋升生产）；②2-hop 执行层增量补齐（10 份报告 + git-bundle 复现包 + lib md5 血统 + S3 门数据 + 失败日志）；③新增 `docs/VERSION-LANDSCAPE.md` 版本链总览与三个 "V5" 语义消歧；④StageB 加固档案（MD5-RECORD + SPCX 劫持验证计划 + stub tuner 源码）
+
+---
+
+## 0.5 mesh 硬件转发层（switchless RoCE ring fabric）
+
+> 四机环网通信栈的下半层——包如何在无交换机 CX-7 环上硬件转发。全套生成器/规则/单元/
+> 守卫/文档见 **[mesh-fabric/README.md](mesh-fabric/README.md)**。部署序：netplan 正典 →
+> hairpin 8192（停机窗）→ trust pcp → `systemctl enable --now dsv41-mesh` → in_hw 验证 →
+> 接 NCCL ring-only 栈（本仓 §部署）。他机拓扑用 `plan.py` 重生成（MAC/子网各异）。
 
 ---
 
